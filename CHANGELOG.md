@@ -1,5 +1,22 @@
 # @jagreehal/sandbox-node
 
+## 2.0.0
+
+### Major Changes
+
+- 9cb0849: Make screen-node genuinely container-free. The inherited Docker/container subsystem (image build, egress proxy, network firewall, devcontainer, demo, agent PreToolUse hook) has been removed. Every install/add/update/remove now runs the supply-chain gate engine first, then installs natively on the host. Removed the `build`, `demo`, `devcontainer`, and `shell` commands and the `--backend`/`--image` container config fields; `run`/`x`/`audit` now pass through natively.
+- 4dd2b95: Finish the screen rebrand: rename the remaining internal env vars to the
+  `SCREEN_*` prefix (`SCREEN_LOG`, `SCREEN_PM_BIN`, `SCREEN_NPM_REGISTRY`, etc.)
+  and on-disk names to `screen.advisories.json`, `.screen-audit-ignore`, the
+  `.screen` agent dir, and the `screen-node` XDG dir. The integration golden tests
+  were updated to the container-free, `screen`-branded surface (removed-feature
+  tests deleted) and now pass.
+- 86c2954: Rebrand the CLI surface from `sandbox` to `screen`: the command is `screen` (with
+  the `s<pm>` aliases), log output is `screen:`-prefixed, the off switch is
+  `SCREEN_OFF`, and the config/schema files are `screen.config.json` /
+  `screen.schema.json`. Honest threat model in SECURITY.md; AGENTS.md reorients the
+  repo. Stale sandbox-node reference docs and skills removed.
+
 ## 3.0.0
 
 ### Major Changes
