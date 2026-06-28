@@ -5,10 +5,6 @@
     "$schema": {
       "type": "string"
     },
-    "image": {
-      "default": "node-install-sandbox:latest",
-      "type": "string"
-    },
     "updateCheck": {
       "default": true,
       "type": "boolean"
@@ -210,9 +206,7 @@
     },
     "run": {
       "default": {
-        "network": "none",
-        "ports": [],
-        "devPorts": false
+        "network": "none"
       },
       "type": "object",
       "properties": {
@@ -224,82 +218,21 @@
             "on",
             "allowlist"
           ]
-        },
-        "ports": {
-          "default": [],
-          "type": "array",
-          "items": {
-            "anyOf": [
-              {
-                "type": "string"
-              },
-              {
-                "type": "integer",
-                "exclusiveMinimum": 0,
-                "maximum": 9007199254740991
-              }
-            ]
-          }
-        },
-        "devPorts": {
-          "default": false,
-          "type": "boolean"
         }
       },
       "required": [
-        "network",
-        "ports",
-        "devPorts"
-      ],
-      "additionalProperties": false
-    },
-    "build": {
-      "default": {
-        "extraPackages": [],
-        "extraSteps": []
-      },
-      "type": "object",
-      "properties": {
-        "baseImage": {
-          "type": "string"
-        },
-        "nodeVersion": {
-          "type": "string"
-        },
-        "extraPackages": {
-          "default": [],
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "extraSteps": {
-          "default": [],
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
-        },
-        "customDockerfileUnsafe": {
-          "type": "string"
-        }
-      },
-      "required": [
-        "extraPackages",
-        "extraSteps"
+        "network"
       ],
       "additionalProperties": false
     }
   },
   "required": [
-    "image",
     "updateCheck",
     "off",
     "grants",
     "install",
     "egress",
-    "run",
-    "build"
+    "run"
   ],
   "additionalProperties": false
 }

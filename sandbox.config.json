@@ -1,6 +1,5 @@
 {
   "$schema": "./sandbox.schema.json",
-  "image": "node-install-sandbox:latest",
   "grants": {
     "ssh-agent": false,
     "claude": "none",
@@ -20,7 +19,6 @@
     ]
   },
   "run": {
-    "network": "none",
-    "ports": []
+    "network": "none"
   }
 }

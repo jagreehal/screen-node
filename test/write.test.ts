@@ -1,8 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import type { SandboxConfig } from '../src/config.js';
 import type { Route } from '../src/dispatch.js';
-import type { PlanOptions } from '../src/plan.js';
-import { resolvedFrozen, routeToHostArgv } from '../src/write.js';
+import { resolvedFrozen, routeToHostArgv, type PlanOptions } from '../src/write.js';
 
 // The write subsystem is now its own importable module (it used to be nested closures in the
 // self-executing cli.ts). These lock the host-argv builder and the frozen resolution that the native

@@ -90,10 +90,4 @@ describe('initTips', () => {
     }
   });
 
-  it('adds the devcontainer tip only for the agent preset', () => {
-    expect(initTips('agent', 'pnpm').some((t) => t.includes('devcontainer'))).toBe(true);
-    for (const preset of ['balanced', 'strict', 'vibe', 'trusted'] as const) {
-      expect(initTips(preset, 'pnpm').some((t) => t.includes('devcontainer'))).toBe(false);
-    }
-  });
 });

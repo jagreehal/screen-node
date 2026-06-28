@@ -140,7 +140,7 @@ export function planRiskHintLog(targetCount: number, allHints: RiskHint[], { con
   out.push({
     level: 'info',
     text: contained
-      ? "heads-up only, the gates passed and this install is about to continue. Want the real boundary too? Retry with explicit `sandbox <pm>` or use a devcontainer."
+      ? 'heads-up only, the gates passed and this install is about to continue. A native install runs lifecycle scripts on the host, so the gates are heuristic screening, not a hard boundary.'
       : "heads-up only, this was a check, so nothing was installed or downloaded. Run the install when you're ready.",
   });
   return out;

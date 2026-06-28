@@ -48,11 +48,12 @@ action you approve before anything is fetched.
 ## Status
 
 `screen-node` is the gate engine from
-[`@jagreehal/sandbox-node`](https://github.com/jagreehal/sandbox-node), being
-repackaged into a standalone, container-free tool. The **install surface is
-already screen-only** (`screen` + the `s<pm>` aliases; no `sandbox`/container
-commands). The container internals inherited from that project are still present
-but dormant and unreachable, and are slated for removal in a follow-up.
+[`@jagreehal/sandbox-node`](https://github.com/jagreehal/sandbox-node), repackaged
+as a standalone, container-free tool. The inherited Docker/container subsystem
+(image build, egress proxy, firewall, devcontainer) has been **removed**: installs
+run natively on the host, and the gates are heuristics, not a boundary. Two
+follow-ups remain: a `sandbox`→`screen` rename of the log prefix and a few help
+strings, and updating `docs/` + `SECURITY.md`, which still describe the old model.
 
 ## License
 

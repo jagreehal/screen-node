@@ -23,7 +23,6 @@ function withLayers(project: string, local?: string): string {
 describe('readConfig', () => {
   it('returns safe defaults when no file exists', () => {
     const c = readConfig(mkdtempSync(path.join(tmpdir(), 'sbx-empty-')));
-    expect(c.image).toBe('node-install-sandbox:latest');
     expect(c.install.network).toBe('allowlist'); // default-deny egress during install
     expect(c.install.riskHints).toBe('basic');
     expect(c.install.failOnRisk).toBe(false);
@@ -98,13 +97,12 @@ describe('loadConfig layering', () => {
 
   it('local overrides project for ergonomic fields (deep merge, sibling sections preserved)', () => {
     const projectFile = withLayers(
-      '{ "image": "team:1", "run": { "network": "on", "ports": ["3000:3000"] } }',
-      '{ "image": "mine:2" }',
+      '{ "run": { "network": "on" }, "install": { "minReleaseAgeDays": 3 } }',
+      '{ "install": { "minReleaseAgeDays": 7 } }',
     );
     const { config } = loadConfig(path.dirname(projectFile), projectFile);
-    expect(config.image).toBe('mine:2'); // local wins
+    expect(config.install.minReleaseAgeDays).toBe(7); // local wins
     expect(config.run.network).toBe('on'); // project preserved (deep merge, not replace)
-    expect(config.run.ports).toEqual(['3000:3000']); // and its siblings
   });
 
   it('setLocalOff writes the toggle to the local override, and `on` overrides a committed off:true', () => {
@@ -116,10 +114,10 @@ describe('loadConfig layering', () => {
   });
 
   it('setLocalOff preserves other keys already in the local override', () => {
-    const projectFile = withLayers('{}', '{ "image": "my:image" }');
+    const projectFile = withLayers('{}', '{ "updateCheck": false }');
     setLocalOff(projectFile, true);
     const written = JSON.parse(readFileSync(path.join(path.dirname(projectFile), 'sandbox.config.local.json'), 'utf8'));
-    expect(written).toEqual({ image: 'my:image', off: true });
+    expect(written).toEqual({ updateCheck: false, off: true });
   });
 
   it('warns LOUDLY when a personal layer turns containment off (off:true beyond a committed off:false)', () => {
@@ -175,32 +173,4 @@ describe('loadConfig layering', () => {
     expect(() => loadConfig(path.dirname(projectFile), projectFile)).toThrow(/invalid config/i);
   });
 
-  it('resolves a relative customDockerfileUnsafe against the config dir, not the process cwd', () => {
-    const projectFile = withLayers('{ "build": { "customDockerfileUnsafe": "./docker/My.Dockerfile" } }');
-    const { config } = loadConfig(path.dirname(projectFile), projectFile);
-    expect(config.build.customDockerfileUnsafe).toBe(path.join(path.dirname(projectFile), 'docker', 'My.Dockerfile'));
-  });
-
-  it('anchors a user-global relative customDockerfileUnsafe to the user-global dir, not the project dir', () => {
-    // The bug scenario: a relative path in $XDG_CONFIG_HOME/sandbox-node/config.json must resolve
-    // against THAT directory, even though the project lives somewhere else entirely.
-    const userDir = path.join(process.env.XDG_CONFIG_HOME!, 'sandbox-node');
-    mkdirSync(userDir, { recursive: true });
-    const userConfig = path.join(userDir, 'config.json');
-    writeFileSync(userConfig, '{ "build": { "customDockerfileUnsafe": "./global.Dockerfile" } }');
-    try {
-      const projectFile = withLayers('{}'); // project sets no build — the user-global value wins
-      const { config } = loadConfig(path.dirname(projectFile), projectFile);
-      expect(config.build.customDockerfileUnsafe).toBe(path.join(userDir, 'global.Dockerfile'));
-    } finally {
-      rmSync(userConfig); // don't leak into the other tests in this block
-    }
-  });
-
-  it('leaves an absolute customDockerfileUnsafe untouched', () => {
-    const abs = path.join(tmpdir(), 'abs.Dockerfile');
-    const projectFile = withLayers(`{ "build": { "customDockerfileUnsafe": ${JSON.stringify(abs)} } }`);
-    const { config } = loadConfig(path.dirname(projectFile), projectFile);
-    expect(config.build.customDockerfileUnsafe).toBe(abs);
-  });
 });

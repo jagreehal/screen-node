@@ -2,44 +2,24 @@ import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { homedir } from 'node:os';
 import path from 'node:path';
 import { z } from 'zod';
-import { isValidPortSpec } from './ports.js';
 
 /** Network policy for a phase: no egress, full bridge, or default-deny allowlist. */
 export const NetworkMode = z.enum(['none', 'on', 'allowlist']);
 export type NetworkMode = z.infer<typeof NetworkMode>;
 
-/**
- * A port to publish. Accepts a number (`4321`) or string — bare (`"4321"`), `"HOST:CONTAINER"`,
- * or `"IP:HOST:CONTAINER"`. We keep the value as-is (no transform — that can't be expressed in
- * JSON Schema, which the committed `sandbox.schema.json` is generated from); `normalizePort`
- * coerces a number and expands a bare port to `HOST:CONTAINER` at plan time. The `.refine` turns
- * a typo into a readable message instead of Zod's terse "expected string, received number".
- */
-export const PortSpec = z.union([z.string(), z.number().int().positive()]).refine(isValidPortSpec, {
-  message: 'invalid port, use a number or "PORT", "HOST:CONTAINER", or "IP:HOST:CONTAINER"',
-});
-
 export const SandboxConfigSchema = z
   .object({
     /** Editor JSON Schema reference (enables autocomplete/validation in the config file). */
     $schema: z.string().optional(),
-    /**
-     * Image tag for the sandbox container. The default is the built-in managed image: it's resolved
-     * to a per-fingerprint tag at build time (see `MANAGED_IMAGE` in image.ts), so projects with
-     * different package managers / build configs don't clobber one shared `:latest`. Override with a
-     * custom name to pin your own image — custom names are used verbatim. Keep this literal in sync
-     * with `MANAGED_IMAGE`.
-     */
-    image: z.string().default('node-install-sandbox:latest'),
-    /** Check npm for a newer `sandbox` once a day and print a notice (set false to opt the project out). */
+    /** Check npm for a newer `screen` once a day and print a notice (set false to opt the project out). */
     updateCheck: z.boolean().default(true),
     /**
-     * Turn containment OFF for this project: every operation command (`install`/`add`/`run`/`dev`/the
-     * pass-through `sandbox npm …`) runs directly on the host, exactly as if you'd typed it without
-     * `sandbox`. The escape hatch for a repo you trust — commit it in `sandbox.config.json`, or set it
+     * Turn screening OFF for this project: every operation command (`install`/`add`/`run`/the
+     * pass-through `screen npm …`) runs directly on the host, exactly as if you'd typed it without
+     * `screen`. The escape hatch for a repo you trust — commit it in `sandbox.config.json`, or set it
      * only for yourself in `sandbox.config.local.json`. The env var `SANDBOX_OFF=1` does the same for
      * one command or one shell.
-     * Sandbox-only commands (`check`, `doctor`, `init`, `verify`, …) keep working regardless.
+     * Screen-only commands (`check`, `doctor`, `init`, `verify`, …) keep working regardless.
      */
     off: z.boolean().default(false),
     grants: z
@@ -138,38 +118,9 @@ export const SandboxConfigSchema = z
     run: z
       .object({
         network: NetworkMode.default('none'),
-        ports: z.array(PortSpec).default([]),
-        // Publish the common framework dev-server ports (Vite/Next/Astro/…) to the host
-        // so `npm run dev` is reachable without listing each one. Only takes effect when
-        // `network` isn't 'none'. The `vibe`/`agent` presets turn this on.
-        devPorts: z.boolean().default(false),
       })
       .strict()
-      .default({ network: 'none', ports: [], devPorts: false }),
-    build: z
-      // How the sandbox image is built. The bundled Dockerfile owns the security layers
-      // (metadata guard, capability tooling, corepack); these knobs let a project pin the
-      // base or layer extras on top WITHOUT replacing those layers. `customDockerfileUnsafe`
-      // is the escape hatch that does replace them — and the only one that voids the boundary.
-      .object({
-        // Full `repo:tag[@digest]` for the image the Dockerfile builds FROM. Overrides nodeVersion.
-        baseImage: z.string().optional(),
-        // Convenience: build FROM `node:<nodeVersion>-bookworm-slim`. Ignored when baseImage is set.
-        nodeVersion: z.string().optional(),
-        // Extra apt packages installed on top of the security base.
-        extraPackages: z.array(z.string()).default([]),
-        // Extra raw Dockerfile instructions (RUN/ENV/COPY…) layered on top of the security base.
-        // COPY/ADD paths resolve against your PROJECT ROOT (the build context), so they can pull
-        // files from the repo into the image. Editing a COPY'd file won't auto-rebuild — run `sandbox build`.
-        extraSteps: z.array(z.string()).default([]),
-        // Replace the bundled Dockerfile entirely with this file. ADVANCED: the sandbox can no
-        // longer guarantee its boundary (metadata guard, dropped caps, isolation) — you own it.
-        // Named `…Unsafe` on purpose, warns loudly on every run, and a personal layer setting it
-        // is always flagged. Prefer baseImage / extraPackages / extraSteps.
-        customDockerfileUnsafe: z.string().optional(),
-      })
-      .strict()
-      .default({ extraPackages: [], extraSteps: [] }),
+      .default({ network: 'none' }),
   })
   .strict();
 
@@ -263,19 +214,6 @@ function mergeRaw(base: Record<string, unknown>, over: Record<string, unknown>):
   return out;
 }
 
-/**
- * Resolve a layer's relative `build.customDockerfileUnsafe` against the directory of the file
- * that DECLARED it — not the process cwd. A path written in `~/.config/sandbox-node/config.json`
- * or a `--config /elsewhere/sandbox.config.json` must mean "relative to that file", and survive
- * being run from any directory. Absolute paths pass through unchanged. Mutates the raw layer.
- */
-function resolveLayerBuildPath(raw: Record<string, unknown>, layerDir: string): void {
-  const build = raw.build;
-  if (isPlainObject(build) && typeof build.customDockerfileUnsafe === 'string' && build.customDockerfileUnsafe) {
-    build.customDockerfileUnsafe = path.resolve(layerDir, build.customDockerfileUnsafe);
-  }
-}
-
 /** Read one config file as a raw object (JSONC + note-keys stripped). Missing file → undefined. */
 function readRaw(file: string): Record<string, unknown> | undefined {
   if (!existsSync(file)) return undefined;
@@ -287,7 +225,6 @@ function readRaw(file: string): Record<string, unknown> | undefined {
   }
   const clean = dropNoteKeys(parsed);
   if (!isPlainObject(clean)) throw new Error(`sandbox: ${file} must contain a JSON object`);
-  resolveLayerBuildPath(clean, path.dirname(file));
   return clean;
 }
 
@@ -365,7 +302,6 @@ function boundaryLooseningWarnings(eff: SandboxConfig, base: SandboxConfig): str
   if (eff.install.minReleaseAgeDays < base.install.minReleaseAgeDays) w.push(`install.minReleaseAgeDays lowered to ${eff.install.minReleaseAgeDays} (team config: ${base.install.minReleaseAgeDays})`);
   const droppedFeeds = base.install.malwareFeeds.filter((f) => !eff.install.malwareFeeds.includes(f));
   if (droppedFeeds.length) w.push(`install.malwareFeeds dropped ${droppedFeeds.join(', ')} (removed by a personal layer)`);
-  if (eff.build.customDockerfileUnsafe && !base.build.customDockerfileUnsafe) w.push('build.customDockerfileUnsafe set by a personal layer, the sandbox boundary is no longer verified');
   return w;
 }
 

@@ -15,21 +15,20 @@ export function isCompletionShell(value: string): value is CompletionShell {
  * checks each entry appears in the script, so add new commands here when they land.
  */
 export const SANDBOX_COMMANDS = [
-  'init', 'setup', 'allow', 'off', 'on', 'doctor', 'build', 'verify', 'scan', 'secrets', 'feeds', 'delta', 'check', 'preflight', 'approve-builds',
-  'badge', 'devcontainer', 'completion', 'shell', 'install', 'add', 'remove', 'run', 'x', 'update', 'upgrade', 'audit', 'dev', 'script', 'help', 'version',
+  'init', 'setup', 'allow', 'off', 'on', 'doctor', 'verify', 'scan', 'secrets', 'feeds', 'delta', 'check', 'preflight', 'approve-builds',
+  'badge', 'completion', 'install', 'add', 'remove', 'run', 'x', 'update', 'upgrade', 'audit', 'dev', 'script', 'help', 'version',
   'npm', 'pnpm', 'yarn', 'bun', 'npx', 'bunx', 'node', 'tsx', 'turbo', 'nx',
 ] as const;
 
 /** Global flags parsed before the command (mirrors `parse()` in cli.ts). */
 export const GLOBAL_FLAGS = [
-  '--config', '--image', '--backend', '--env', '--env-from', '--dev', '--frozen', '--fail-on-egress',
-  '--fail-on-source-writes', '--canaries', '--no-canaries', '--risk', '--fail-on-risk', '--full-network',
-  '--dry-run', '--min-release-age', '--allow-recent', '--deep', '--interactive', '--fail-on-advisory',
+  '--config', '--env', '--env-from', '--frozen',
+  '--fail-on-source-writes', '--risk', '--fail-on-risk',
+  '--dry-run', '--min-release-age', '--allow-recent', '--deep', '--fail-on-advisory',
   '--allow-deprecated', '--allow-all-builds', '--allow-build-hosts', '--no-update-check', '--json',
 ] as const;
 
 export const PRESET_VALUES = ['strict', 'balanced', 'vibe', 'agent', 'trusted'] as const;
-export const BACKEND_VALUES = ['docker', 'podman'] as const;
 export const RISK_VALUES = ['off', 'basic', 'thorough'] as const;
 
 const COMMANDS = SANDBOX_COMMANDS.join(' ');
@@ -76,7 +75,6 @@ _sandbox() {
     args)
       case $words[$CURRENT-1] in
         --preset) compadd -- ${PRESET_VALUES.join(' ')} ;;
-        --backend) compadd -- ${BACKEND_VALUES.join(' ')} ;;
         --risk) compadd -- ${RISK_VALUES.join(' ')} ;;
         *)
           if [[ $words[$CURRENT] == -* ]]; then
@@ -104,7 +102,6 @@ _sandbox() {
   flags="${FLAGS}"
   case "$prev" in
     --preset) COMPREPLY=( $(compgen -W "${PRESET_VALUES.join(' ')}" -- "$cur") ); return ;;
-    --backend) COMPREPLY=( $(compgen -W "${BACKEND_VALUES.join(' ')}" -- "$cur") ); return ;;
     --risk) COMPREPLY=( $(compgen -W "${RISK_VALUES.join(' ')}" -- "$cur") ); return ;;
   esac
   if [[ "$cur" == -* ]]; then
@@ -127,7 +124,6 @@ function fish(): string {
       ...GLOBAL_FLAGS.map((flag) => `complete -c ${bin} -l ${flag.replace(/^--/, '')}`),
       `# ${bin}: enum-valued flags`,
       `complete -c ${bin} -l preset -x -a '${PRESET_VALUES.join(' ')}'`,
-      `complete -c ${bin} -l backend -x -a '${BACKEND_VALUES.join(' ')}'`,
       `complete -c ${bin} -l risk -x -a '${RISK_VALUES.join(' ')}'`,
     );
   }

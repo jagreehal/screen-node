@@ -4,24 +4,18 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from 'node:os';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { confirm, isCancel, spinner } from '@clack/prompts';
-import { createBackend } from './backend.js';
-import { createBuildReporter, type BuildReporter } from './build-progress.js';
 import type { SandboxConfig } from './config.js';
 import { loadConfig, readConfig, setLocalOff } from './config.js';
 import { resolveProjectContext } from './context.js';
 import { renderBadge } from './badge.js';
 import { COMPLETION_SHELLS, completionScript, isCompletionShell } from './completion.js';
-import { resolveBuildSpec } from './image.js';
 import { runAuditVerify, runKeygen, runVerify, runVerifyReceipt, readSigningKey, signVerifyReceipt } from './verify.js';
-import { BASE_IMAGE, resolveImageDigest, writeDevcontainer } from './devcontainer.js';
 import { effectivePm, isGlobalInstall, routePassthrough, unwrapSelfInvocation, type Route } from './dispatch.js';
 import { runDoctor } from './doctor.js';
-import { execute } from './execute.js';
 import { findPendingBuilds, writeBuildApprovals } from './build-approval.js';
 import { ensureLocalConfigIgnored, runInit } from './init.js';
 import { log } from './log.js';
 import { lockfileName, pmExecArgv, pmScriptArgv, resolvePackageManager, type PackageManager } from './package-manager.js';
-import { type PlanOptions } from './plan.js';
 import { probeProject, readManifestDependencies, readWorkspaceDependencies, type ProjectFacts } from './project.js';
 import { foldBinLeader, leaderForBin } from './native.js';
 import { allowHosts } from './registry.js';
@@ -36,67 +30,62 @@ import { formatSafeReceipt, freshSubstitutions, incidentallyPinned, rewriteAddAr
 import { applyUpgrades, classifyUpgrades, defaultNcuRunner, mergeProposals, NCU_SPEC, ncuPasses, parseUpgrades, readDeclaredRanges, renderUpgradeTable, upgradeTargets, type NcuRunner, type ProposedUpgrade, type UpgradePolicy, type UpgradeTarget } from './upgrade.js';
 import { execPackageTargets, parseLockfilePackages, parsePackageTargets, planRiskHintLog, riskTargetsForInstall, riskTargetsForUpdate, type LockfilePackage, type ReleaseAgeViolation, type RiskHint, type RiskTarget } from './risk.js';
 import { runSetup } from './setup.js';
-import { makeCanary } from './canary.js';
-import { demoPlan, runDemo, type DemoRunner } from './demo.js';
 import { buildHostSuffixes } from './hosts.js';
 import { disabledByEnv, refreshUpdateCache, scheduleUpdateCheck, selfVersion, updateBanner } from './update-check.js';
-import type { ContainerBackend } from './backend.js';
 import { fail } from './fail.js';
 import type { Globals } from './globals.js';
-import { resolvedFrozen, routeToHostArgv, runWrite, type WriteContext } from './write.js';
+import { resolvedFrozen, routeToHostArgv, runWrite, type PlanOptions, type WriteContext } from './write.js';
 
-const HELP = `sandbox: supply-chain gates first, native by default, container when you want the boundary
+const HELP = `screen: supply-chain gates first, install natively. A fast filter, not a cage.
 
-Usage: sandbox [globals] <command> [args]
+Usage: screen [globals] <command> [args]
 
 Quick start:
-  sandbox check zod           review a package before you add it (no install, no Docker)
-  sandbox install             vet, then install (native, or contained if the tree already is)
-  sandbox add zod             vet, then add a dependency (mode-aware: native or contained)
-  sandbox update              vet, then update dependencies (mode-aware: native or contained)
-  sandbox pnpm add zod        vet, then ALWAYS install in a throwaway container (the boundary, on demand)
-  sandbox devcontainer init   keep your editor + agent inside the container for the full session
+  screen check zod            review a package before you add it (no install)
+  screen install              vet, then install natively with the detected package manager
+  screen add zod              vet, then add a dependency natively
+  screen update               vet, then update dependencies natively
+  screen pnpm add zod         vet, then install natively (explicit package manager)
 
-Install mode: a contained (Linux) node_modules keeps getting contained installs; a host-native or
-fresh project installs natively, so your IDE and tools just work. The gates run either way. The
-explicit \`sandbox <pm>\` form forces the container. Native install runs lifecycle scripts on the
-host, so it is heuristic gates, not the boundary; the container is the boundary.
+How it works: every install/add/update/remove runs the supply-chain gates (OSV malware advisories,
+your malware feeds + team advisories, typosquats, the release-age worm window, deprecation) BEFORE
+anything is fetched, then installs natively on the host so your IDE and tools just work. A native
+install runs lifecycle scripts on the host, so the gates are heuristic screening, not a hard
+boundary; for a real boundary, run untrusted installs in your own isolated environment.
 
 Common project commands:
-  sandbox dev                 auto-detect PM, run dev/start/serve with full network + dev ports
-  sandbox test                auto-detect PM, run a package.json script natively
-  sandbox script build        run a specific package.json script, even if it collides with a sandbox command
-  sandbox setup --vibe        one-button setup for vibe/dev work
+  screen dev                  auto-detect PM, run dev/start/serve
+  screen test                 auto-detect PM, run a package.json script natively
+  screen script build         run a specific package.json script, even if it collides with a screen command
+  screen setup --vibe         one-button setup for vibe/dev work
 
-Expert: per-PM binaries (same mode-aware path, shorter keystrokes)
-  New here? Use \`sandbox add\` / \`sandbox install\` above. These are for muscle memory only:
-  sandbox-pnpm add zod         vet with the gate engine, then install mode-aware (native or contained).
-  (short alias: spnpm)         Same for npm/yarn/bun. Use explicit \`sandbox <pm>\` when you WANT the
-                               throwaway container boundary. Your real \`pnpm\` is never touched.
-  sandbox-npm/snpm · sandbox-yarn/syarn · sandbox-bun/sbun · sandbox-npx/snpx · sandbox-bunx/sbunx
+Expert: per-PM binaries (same gated native path, shorter keystrokes)
+  New here? Use \`screen add\` / \`screen install\` above. These are for muscle memory only:
+  screen-pnpm add zod          vet with the gate engine, then install natively.
+  (short alias: spnpm)         Same for npm/yarn/bun. Your real \`pnpm\` is never touched.
+  screen-npm/snpm · screen-yarn/syarn · screen-bun/sbun · screen-npx/snpx · screen-bunx/sbunx
 
 Advanced commands:
   init [--preset N]    create sandbox.config.json from a preset (interactive picker,
                        or non-interactive with --preset strict|balanced|vibe|agent|trusted [--force])
-  setup [--preset N]   one-button onboarding: write config if needed, check backend,
-                       build images if needed, then print the next commands
+  setup [--preset N]   one-button onboarding: write config if needed, then print the next commands
   dev                  auto-detect the package manager and run the first of
                        dev > start > serve from package.json. Passes through extra args.
   script <name>        run the named package.json script with native PM syntax.
-                       Use this when the script name collides with a sandbox command
-                       like build/scan/doctor/demo.
+                       Use this when the script name collides with a screen command
+                       like scan/doctor.
   allow <host...>      add host(s) to egress.allow in sandbox.config.json
-  off / on             toggle the sandbox wrapper for this project (writes off to sandbox.config.local.json,
-                       your git-ignored personal override). off → sandbox commands pass straight through
-                       on the host here; on → gates + normal sandbox behavior again. The per-project twin of SANDBOX_OFF=1.
+  off / on             toggle the screen wrapper for this project (writes off to sandbox.config.local.json,
+                       your git-ignored personal override). off → screen commands pass straight through
+                       on the host here; on → gates + normal screen behavior again. The per-project twin of SANDBOX_OFF=1.
   completion <shell>   print a standalone tab-completion script for zsh|bash|fish (commands,
-                       globals, --preset/--backend/--risk). Install it for zsh, e.g.:
-                       \`sandbox completion zsh > "\${fpath[1]}/_sandbox"\`.
+                       globals, --preset/--risk). Install it for zsh, e.g.:
+                       \`screen completion zsh > "\${fpath[1]}/_screen"\`.
   approve-builds [pkg]  approve dependency build scripts pnpm left ignored (writes allowBuilds +
                        onlyBuiltDependencies, then re-installs). No args = approve all pending;
                        --deny records the opposite. Install also prompts on a TTY automatically.
   check [pkg... | file.json | pm cmd]   audit packages BEFORE you install them. A read-only review pass.
-                       No container, no Docker: queries the registry + OSV advisory DB and prints
+                       Queries the registry + OSV advisory DB and prints
                        every finding (malware, vulns, typosquats, fresh/deprecated versions, …).
                          sandbox check express lodash@4      bare names (the common case)
                          sandbox check                       this project's deps (root + every workspace)
@@ -109,31 +98,26 @@ Advanced commands:
   scan                 RETROACTIVE malware sweep: re-query OSV for the versions in your committed
                        lockfile and exit non-zero if any installed package is NOW flagged as
                        malware. Catches deps that turned malicious AFTER you installed them, the
-                       gap install-time gating can't cover. No container needed. Run in CI/cron.
+                       gap install-time gating can't cover. Run in CI/cron.
   delta [--base <ref>] gate ONLY the dependency changes a PR introduces: diff the lockfile against
                        <ref> (default origin/main; or --base-lockfile <path>) and run the release-age,
                        malware, and deprecation gates over just the added/bumped versions. Honors
                        --min-release-age / --fail-on-advisory. Fast, low-noise PR check.
   secrets [path]       offline scan for committed credentials (API keys, tokens, private keys, db
-                       URLs). Read-only, no container; exits non-zero on any finding (CI tripwire).
+                       URLs). Read-only; exits non-zero on any finding (CI tripwire).
                        Matched values are redacted. Reports where, never the secret. Defaults to cwd.
                        ~40 provider patterns, checksum/decode validation (Luhn, JWT) to cut noise,
                        plus an entropy fallback for secret-ish values with no known shape.
-  demo                 run real supply-chain attacks (credential theft, persistence, IMDS pivot,
-                       egress exfil) against the sandbox in a THROWAWAY project and show each one
-                       contained. No mocks; exits non-zero if any attack isn't contained.
   feeds <update|list>  manage malware FEEDS (install.malwareFeeds): \`update\` fetches + caches them so
                        the install-time blocklist check stays offline; \`list\` shows configured/cached
                        feeds. A package on a feed (or in sandbox.advisories.json) ALWAYS blocks installs.
   upgrade [--write]    move declared dependency RANGES to newer versions (npm-check-updates),
-                       NOT just within the range (that's \`sandbox npm update\`). Your release-age
+                       NOT just within the range (that's \`screen npm update\`). Your release-age
                        gate drives ncu's --cooldown automatically, the proposed versions go through
-                       the SAME gates as install, and --write rewrites package.json then installs in
-                       the sandbox. --minor/--patch/--target to cap the jump; --reject <pat> to skip.
-  doctor [--fix]       check config, package manager, backend, daemon, and image state.
-                       --fix runs the safe remedies (currently: rebuild an absent/stale image).
-  build                build (or rebuild) the sandbox + egress-proxy images
-  verify [--scan]      exit non-zero unless this repo commits a real sandbox boundary and
+                       the SAME gates as install, and --write rewrites package.json then installs.
+                       --minor/--patch/--target to cap the jump; --reject <pat> to skip.
+  doctor               check config, package manager, registry hosts, and Node runtime state.
+  verify [--scan]      exit non-zero unless this repo commits a real screen boundary and
        [--secrets]     no personal layer has loosened it, the CI gate behind the badge.
        [--sign]        --scan also runs the retroactive malware sweep (so the badge means
                        "boundary intact AND no installed dep is currently flagged as malware");
@@ -146,51 +130,33 @@ Advanced commands:
                        (SANDBOX_SIGNING_KEY), fingerprint → pin via SANDBOX_TRUSTED_KEY
   audit verify <log>   verify the hash-chained audit log is intact (no entry altered or removed).
                        Set SANDBOX_AUDIT_LOG=<path> on any run to append tamper-evident events
-  badge [--workflow F] print a markdown "sandboxed" badge. Bare = static provenance badge;
+  badge [--workflow F] print a markdown "screened" badge. Bare = static provenance badge;
                        --workflow sandbox.yml = the CI-backed verified badge (--repo to override)
-  devcontainer init    generate a .devcontainer/ from sandbox.config.json, the persistent
-                       (per-session) form of the same policy: run the agent + editor INSIDE
-                       the jail, with the same egress allowlist. node_modules lives in a Docker
-                       volume, so the container boundary AND a happy IDE come together. --force to overwrite.
 
 Pass-through and expert commands:
-  install [pm-args]    install deps. Persistence paths (.git/.github/.husky/.claude/…)
-                       and package.json are read-only; root stays writable. No host
-                       creds. Egress default-deny (allowlist: registry only).
+  install [pm-args]    vet, then install deps natively with the detected package manager.
   add <pkg...>         add dependency(ies); writes package.json, saved as exact versions
                        by default
   remove <pkg...>      drop dependency(ies); writes package.json like add, but fetches
-                       nothing new (no supply-chain gate). Pass-through too: sandbox npm
-                       uninstall lodash · sandbox pnpm remove zod · sandbox bun rm left-pad
+                       nothing new (no supply-chain gate). Pass-through too: screen npm
+                       uninstall lodash · screen pnpm remove zod · screen bun rm left-pad
   x <tool> [args]      run a package binary npx/bunx-style (local-first, fetches as fallback),
-                       the shorthand for sandbox npx <tool> / sandbox bunx <tool>
-  run -- <cmd...>      run a command in the container (network: none by default)
-  shell                interactive shell in the container
-  version              print the installed sandbox version (also -v / --version)
+                       the shorthand for screen npx <tool> / screen bunx <tool>
+  run -- <cmd...>      run a command natively on the host
+  version              print the installed screen version (also -v / --version)
 
-Expert: explicit package-manager passthrough still works: \`sandbox npm install\`,
-\`sandbox pnpm add zod\`, \`sandbox yarn upgrade\`, \`sandbox bunx vite\`. Your SSH keys,
-npm token, cloud creds, and editor/agent state stay out unless you grant them.
+Expert: explicit package-manager passthrough still works: \`screen npm install\`,
+\`screen pnpm add zod\`, \`screen yarn upgrade\`, \`screen bunx vite\`.
 
 Globals (before the command):
   --config <path>      use a specific sandbox.config.json
-  --image <tag>        override the sandbox image tag
-  --backend <docker|podman>   container runtime (default docker; or $SANDBOX_BACKEND)
   --env <NAME>         forward one host env var by name for this invocation
   --env-from <path>    parse one env file on the host and inject its values; append
                        :KEY1,KEY2 to inject only those keys (e.g. .env:FOO,BAR).
                        Named --env-from because Node ≥20.6 reserves --env-file.
-  --dev                one-off dev mode: run network on + common dev ports; no extra secrets
-  --frozen             reproducible install (npm ci / --frozen-lockfile); on every package
-                       manager except pnpm the ENTIRE source tree is read-only. Needs a
-                       committed lockfile.
-  --fail-on-egress     exit non-zero if the proxy blocked any egress (CI tripwire)
+  --frozen             reproducible install (npm ci / --frozen-lockfile). Needs a committed lockfile.
   --fail-on-source-writes  exit non-zero if an install edited your source tree outside deps/lockfiles
                        (a tripwire after the fact: the tree is writable, so review with git diff)
-  --canaries           plant fake AWS/Stripe/Slack credentials in the install container and watch
-       --no-canaries   the egress proxy for them; if a planted token leaves the box it's caught as
-                       an exfiltration attempt (fails the run). Allowlist egress only; on by default
-                       in the strict/agent presets. --no-canaries turns it off for one run.
   --risk <off|basic|thorough>  registry risk hints: off; basic (packument-only: typosquat,
                        provenance regression, maintainer takeover, …); thorough adds
                        network checks (missing metadata, low downloads, expired domains)
@@ -203,27 +169,22 @@ Globals (before the command):
   --deep               extend the blocking gates (release-age, deprecated, and malware when
                        --fail-on-advisory is set) to the whole resolved tree (transitive),
                        read from the lockfile (npm + pnpm + yarn), not just direct deps
-  --interactive        local TTY mode: when egress is blocked, show what each host is and
-                       prompt to allow once, save for the team (sandbox.config.json), save just
-                       for you (sandbox.config.local.json), or retry once with full network
   --fail-on-advisory   BLOCK when a version is flagged as malware in the OSV advisory DB
                        (the strict preset sets this)
   --allow-deprecated   allow installing a maintainer-DEPRECATED version (off by default:
                        deprecated versions are abandoned and a supply-chain risk, so they
                        are blocked). Rides on risk hints, so --risk off also disables it.
-  --full-network       scarier escape hatch: run this once with full network (no egress
-                       allowlist); with run/shell it also enables common dev ports
   --allow-all-builds   approve every ignored dependency build script without prompting (CI/agents)
-  --allow-build-hosts  widen egress (this run) to the curated native-build/release hosts:
+  --allow-build-hosts  widen egress.allow (this run) to the curated native-build/release hosts:
                        Node headers, GitHub releases, Prisma/Playwright/Cypress/Electron binaries
-  --dry-run            preview what would be mounted, allowed, and run; then stop (human-readable)
-  --json               print the resolved execution plan as JSON instead of running it
+  --dry-run            print what would run natively; then stop (human-readable)
+  --json               print what would run as JSON instead of running it
   --no-update-check    skip the once-a-day "new version available" check for this run
                        (also off via NO_UPDATE_NOTIFIER=1, CI=1, or updateCheck:false in config)
 
 Turn it off: SANDBOX_OFF=1 runs one command (or, exported, a whole shell) straight on the host with
-no container. For a trusted repo, set "off": true in sandbox.config.json (whole team) or
-sandbox.config.local.json (just you). Sandbox-only commands (check, doctor, init, verify, …) keep
+no screening. For a trusted repo, set "off": true in sandbox.config.json (whole team) or
+sandbox.config.local.json (just you). Screen-only commands (check, doctor, init, verify, …) keep
 working either way.
 
 Logging: human lines on stderr by default; set SANDBOX_LOG=json for NDJSON,
@@ -232,9 +193,7 @@ SANDBOX_LOG_LEVEL=debug|info|warn|error to filter.
 
 /** Parse global flags that appear BEFORE the command (so they never clash with `run --`). */
 function parse(argv: string[]): { globals: Globals; cmd?: string; args: string[] } {
-  const backendEnv = process.env.SANDBOX_BACKEND;
   const globals: Globals = {
-    backend: backendEnv === 'podman' ? 'podman' : 'docker',
     json: false,
     frozen: false,
     dev: false,
@@ -255,8 +214,6 @@ function parse(argv: string[]): { globals: Globals; cmd?: string; args: string[]
   for (; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--config') globals.config = argv[++i];
-    else if (a === '--image') globals.image = argv[++i];
-    else if (a === '--backend') globals.backend = argv[++i] === 'podman' ? 'podman' : 'docker';
     else if (a === '--json') globals.json = true;
     else if (a === '--format') {
       const f = argv[++i];
@@ -299,26 +256,10 @@ function parse(argv: string[]): { globals: Globals; cmd?: string; args: string[]
 }
 
 /**
- * The reporter the CLI hands the backend for the one-time image build: a clack spinner on a TTY
- * (drawn on stderr so stdout — JSON/plan/container output — stays clean), and plain stderr lines in
- * CI or when piped. Lazy: the spinner only animates if `ensureImage` actually starts a build.
- */
-function ttyBuildReporter(): BuildReporter {
-  if (!process.stderr.isTTY) return createBuildReporter();
-  const s = spinner({ output: process.stderr });
-  let active = false;
-  return createBuildReporter({
-    start: (m) => { s.start(m); active = true; },
-    succeed: (m) => { if (active) { s.stop(m); active = false; } },
-    fail: (m) => { if (active) { s.error(m); active = false; } },
-  });
-}
-
-/**
  * One-off invocation modes, applied to the config for this run only:
  * `--allow-build-hosts` widens the egress allowlist to the curated native-build/release hosts;
- * `--dev` opens only run/shell networking + common dev ports;
- * `--full-network` also drops install/add egress back to the default bridge.
+ * `--dev` / `--full-network` are kept for surface compatibility but no longer change containment
+ * (every command runs natively on the host now).
  */
 function applyOneOffModes(config: SandboxConfig, globals: Globals): SandboxConfig {
   let cfg = config;
@@ -327,7 +268,7 @@ function applyOneOffModes(config: SandboxConfig, globals: Globals): SandboxConfi
     if (extra.length) cfg = { ...cfg, egress: { ...cfg.egress, allow: [...cfg.egress.allow, ...extra] } };
   }
   if (!globals.dev && !globals.fullNetwork) return cfg;
-  const run = { ...cfg.run, network: 'on' as const, devPorts: globals.dev ? true : cfg.run.devPorts };
+  const run = { ...cfg.run, network: 'on' as const };
   if (!globals.fullNetwork) return { ...cfg, run };
   return { ...cfg, install: { ...cfg.install, network: 'on' }, run };
 }
@@ -342,28 +283,32 @@ function sandboxOff(config: SandboxConfig): boolean {
 }
 
 /**
- * Run the resolved command on the host, no container — the body of "sandbox is off". Inherits stdio
- * so an interactive install/dev server behaves exactly as if `sandbox` weren't there. `--dry-run` and
- * `--json` describe the host command instead of running it, matching the contained path's contract.
+ * Run the resolved command on the host (no screening), inheriting stdio so an interactive install/dev
+ * server behaves exactly as if the wrapper weren't there. `--dry-run` and `--json` describe the host
+ * command instead of running it. `notice` says why we're bypassing screening (off, or a global install).
  */
-function runOnHost(argv: string[], cwd: string, globals: Globals): number {
-  const reason = config_off_reason();
+function execOnHost(argv: string[], cwd: string, globals: Globals, notice: string): number {
   if (globals.dryRun) {
-    console.log(`sandbox: OFF (${reason}), would run on the host, no container:\n  ${argv.join(' ')}`);
+    console.log(`sandbox: ${notice}, would run on the host:\n  ${argv.join(' ')}`);
     return 0;
   }
   if (globals.json) {
-    console.log(JSON.stringify({ off: true, reason, host: true, argv }, null, 2));
+    console.log(JSON.stringify({ host: true, notice, argv }, null, 2));
     return 0;
   }
-  log.warn(`containment is off (${reason}). Running on the host: ${argv.join(' ')}`);
+  log.warn(`${notice}. Running on the host: ${argv.join(' ')}`);
   const [program, ...rest] = argv;
   const result = spawnSync(program!, rest, { cwd, stdio: 'inherit' });
   if (result.error) fail(`could not run '${program}' on the host: ${result.error.message}`);
   return result.status ?? 1;
 }
 
-/** Why containment is off, for the one-line notice — the env var wins the attribution when both are set. */
+/** The host runner for "screening off" (config `off:true` or SANDBOX_OFF). */
+function runOnHost(argv: string[], cwd: string, globals: Globals): number {
+  return execOnHost(argv, cwd, globals, `screening is off (${config_off_reason()})`);
+}
+
+/** Why screening is off, for the one-line notice — the env var wins the attribution when both are set. */
 function config_off_reason(): string {
   return (process.env.SANDBOX_OFF ?? '') !== '' ? 'SANDBOX_OFF' : 'off:true in config';
 }
@@ -407,12 +352,10 @@ function resolveRoute(cmd: string, args: string[], facts: ProjectFacts): Route |
       return { model: 'run', argv };
     }
     case 'x': {
-      // The npx/bunx muscle-memory shortcut: `sandbox x vite` runs the local (or fetched) tool.
-      if (args.length === 0) fail('usage: sandbox x <tool> [args]  (run a package binary, npx-style)');
+      // The npx/bunx muscle-memory shortcut: `screen x vite` runs the local (or fetched) tool.
+      if (args.length === 0) fail('usage: screen x <tool> [args]  (run a package binary, npx-style)');
       return { model: 'run', argv: pmExecArgv(facts.pm, args) };
     }
-    case 'shell':
-      return { model: 'run', argv: ['bash', '-l'] };
     default: {
       // Transparent pass-through: `sandbox npm install`, `sandbox pnpm add zod`, `sandbox npm run dev`.
       return routePassthrough([cmd, ...args]);
@@ -1288,34 +1231,6 @@ async function runUpgradeCommand(
 }
 
 /**
- * `sandbox demo` — run the attack scenarios against the real sandbox. Everything happens in a
- * THROWAWAY project (never the user's repo): a temp dir with a read-only `.git` so the persistence
- * attack has something to bounce off, and no `.env`/credentials so the theft attack finds nothing.
- * Each scenario runs through the same {@link execute} path a real install uses, so the result is a
- * genuine demonstration, not a script. Image/build settings come from the user's config (so it reuses
- * their sandbox image); the per-scenario network mode + canaries come from the scenario itself.
- */
-async function runDemoCommand(backend: ContainerBackend, rootDir: string, configPath: string | undefined): Promise<number> {
-  const baseConfig = readConfig(rootDir, configPath);
-  const dir = mkdtempSync(path.join(tmpdir(), 'sbx-demo-'));
-  mkdirSync(path.join(dir, '.git', 'hooks'), { recursive: true });
-  writeFileSync(path.join(dir, 'package.json'), '{"name":"sandbox-demo","private":true}\n');
-  log.info('demo: running real supply-chain attacks against the sandbox (first run builds the image; nothing touches your repo)');
-  try {
-    const facts = probeProject(dir, baseConfig, { envFiles: [], envFileBaseDir: dir, configEnvFilesBaseDir: dir });
-    const runner: DemoRunner = async (scenario) => {
-      const plan = demoPlan(scenario, baseConfig, facts);
-      const canary = scenario.needs.canaries ? makeCanary() : undefined;
-      const result = await execute(plan, backend, { failOnEgress: false, ...(canary ? { canary } : {}) });
-      return { code: result.code, deniedHosts: result.deniedHosts, canaryHits: result.canaryHits };
-    };
-    return await runDemo(runner);
-  } finally {
-    rmSync(dir, { recursive: true, force: true });
-  }
-}
-
-/**
  * Print the "new version available" notice (from cache — never blocks) and kick off the once-a-day
  * background refresh. Stays out of the way: only on an interactive stderr, and skipped for machine
  * output (--json/--dry-run), CI, and the documented opt-outs (--no-update-check, NO_UPDATE_NOTIFIER,
@@ -1404,12 +1319,7 @@ async function main(): Promise<number> {
       else if (args[i] === '--agent') preset = 'agent';
       else if (args[i] === '--force') force = true;
     }
-    return runSetup(context.rootDir, {
-      preset,
-      force,
-      backend: globals.backend,
-      image: globals.image,
-    });
+    return runSetup(context.rootDir, { preset, force });
   }
 
   if (cmd === 'verify') {
@@ -1489,59 +1399,12 @@ async function main(): Promise<number> {
     return 0;
   }
 
-  const backend = createBackend(globals.backend, { buildReporter: ttyBuildReporter() });
-
-  if (cmd === 'demo') {
-    return runDemoCommand(backend, context.rootDir, context.configPath);
-  }
-
-  if (cmd === 'build') {
-    const loaded = loadConfig(context.rootDir, context.configPath);
-    for (const warning of loaded.warnings) log.warn(warning);
-    const tag = globals.image ?? loaded.config.image;
-    if (globals.json) {
-      console.log(JSON.stringify(resolveBuildSpec(loaded.config, tag, context.rootDir), null, 2));
-      return 0;
-    }
-    return backend.buildImages(resolveBuildSpec(loaded.config, tag, context.rootDir));
-  }
-
   if (cmd === 'doctor') {
     return runDoctor(context.rootDir, {
       config: context.configPath,
-      image: globals.image,
-      backend: globals.backend,
       invocationCwd,
       runWorkdir: context.runWorkdir,
-      fix: args.includes('--fix'),
     });
-  }
-
-  if (cmd === 'devcontainer') {
-    const sub = args[0];
-    if (sub !== 'init') fail('usage: sandbox devcontainer init [--force]');
-    const force = args.includes('--force');
-    const config = readConfig(context.rootDir, context.configPath);
-    try {
-      const digest = await resolveImageDigest(globals.backend, BASE_IMAGE);
-      const baseImage = digest ? `${BASE_IMAGE}@${digest}` : BASE_IMAGE;
-      const { files, firewall, pinned } = writeDevcontainer(context.rootDir, config, { force, baseImage });
-      console.log('sandbox: wrote a persistent devcontainer from sandbox.config.json');
-      for (const f of files) console.log(`  ${path.relative(context.rootDir, f)}`);
-      console.log('');
-      console.log(pinned ? 'Base image: pinned by digest (a # renovate: annotation lets Renovate keep it current, if this repo uses Renovate).' : `Base image: ${BASE_IMAGE} (tag only; couldn't reach the registry to pin a digest). Re-run \`sandbox devcontainer init --force\` while online to pin it.`);
-      console.log(firewall ? 'Egress firewall: ON (same allowlist as your install egress + Claude domains).' : 'Egress firewall: off (config allows full network).');
-      console.log('node_modules: a named Docker volume (not your host folder), so the Linux tree never');
-      console.log('  reaches your host and macOS/Windows file I/O stays fast. Deps install on container create.');
-      console.log('');
-      console.log('Next:');
-      console.log('  1. Open this folder in VS Code → "Reopen in Container" (or Codespaces).');
-      console.log('  2. Deps install automatically into the volume on first open. The whole environment');
-      console.log('     IS the sandbox, so inside, run plain `npm install` (never `sandbox install` or `sandbox npm install`).');
-      return 0;
-    } catch (e) {
-      fail(e instanceof Error ? e.message : String(e));
-    }
   }
 
   if (cmd === 'allow') {
@@ -1559,14 +1422,14 @@ async function main(): Promise<number> {
     // the sandbox (and overrides a committed off:true, since local layers win).
     const projectFile = context.configPath ?? path.join(context.rootDir, 'sandbox.config.json');
     const file = path.relative(context.rootDir, setLocalOff(projectFile, cmd === 'off')) || path.basename(projectFile);
-    // Keep the personal override out of git — committing off:true would silently disable containment
+    // Keep the personal override out of git — committing off:true would silently disable screening
     // for the whole team. Idempotent; only relevant when the project never ran init/setup.
     if (ensureLocalConfigIgnored(context.rootDir)) log.info(`added ${path.basename(file)} to .gitignore so it can't be committed`);
     if (cmd === 'off') {
-      log.warn(`containment is now off for this project. Wrote off:true to ${file}. Future sandbox commands here run on the host. Re-enable containment: \`sandbox on\`.`);
+      log.warn(`screening is now off for this project. Wrote off:true to ${file}. Future commands here run without screening, straight to your package manager. Re-enable: \`screen on\`.`);
       if (process.env.SANDBOX_OFF) log.info('note: SANDBOX_OFF is also set in this shell, so sandbox stays off here until you unset it too');
     } else {
-      log.info(`containment is on again for this project. Wrote off:false to ${file}. Sandbox commands use the container again.${process.env.SANDBOX_OFF ? ' SANDBOX_OFF is still set in this shell, so unset it before retrying.' : ''}`);
+      log.info(`screening is on again for this project. Wrote off:false to ${file}.${process.env.SANDBOX_OFF ? ' SANDBOX_OFF is still set in this shell, so unset it before retrying.' : ''}`);
     }
     return 0;
   }
@@ -1583,12 +1446,11 @@ async function main(): Promise<number> {
     configEnvFilesBaseDir: context.rootDir,
   });
   const opts: PlanOptions = { workdir: context.runWorkdir, envNames: globals.envNames.filter(Boolean) };
-  if (globals.image) opts.image = globals.image;
   if (globals.frozen) opts.frozen = true;
 
   // Everything the write/install orchestration (src/write.ts) needs, bundled once. The write path lives
   // outside this self-executing module so it can be unit-tested with a fake backend.
-  const writeCtx: WriteContext = { config, facts, opts, globals, project: context, backend, cmd, args, binLeader };
+  const writeCtx: WriteContext = { config, facts, opts, globals, project: context, cmd, args, binLeader };
 
   if (cmd === 'approve-builds') {
     // Resolve pnpm's ignored dependency build scripts without hand-editing YAML. With no package
@@ -1644,26 +1506,24 @@ async function main(): Promise<number> {
   }
 
   const route = resolveCommand(cmd, args, facts);
-  // Containment off (config `off:true` or SANDBOX_OFF) → run the operation straight on the host, as if
-  // `sandbox` weren't in front of it. Checked before global-install guard/gates: off means off.
+  // Screening off (config `off:true` or SANDBOX_OFF) → run the operation straight on the host without
+  // screening, as if the wrapper weren't in front of it. Checked before the gates: off means off.
   if (sandboxOff(config)) {
     return runOnHost(hostCommandFor(cmd, args, route, resolvedFrozen(route, opts, config), facts.isYarnBerry), facts.cwd, globals);
   }
-  // A global install is host tooling — running it in an ephemeral container installs nothing on the
-  // host, so refuse with guidance rather than silently no-op (the path wrappers also pass these through).
+  // A global install is host tooling. screen-node installs on the host anyway, so run it directly.
+  // Global installs are not screened: the gates target a project's resolved dependency tree, not
+  // globally-installed bins.
   if (isGlobalInstall(cmd, route, args)) {
-    log.warn('This is a global install. Running it in a throwaway container would not install anything on your machine.');
-    log.info(`Run it on the host instead: command ${cmd} ${args.join(' ')} (or: SANDBOX_OFF=1 ${cmd} ${args.join(' ')})`);
-    return 1;
+    return execOnHost(hostCommandFor(cmd, args, route, resolvedFrozen(route, opts, config), facts.isYarnBerry), facts.cwd, globals, 'global install: host tooling, not screened');
   }
   const outcome = await preflightRoute(globals, config, facts, route);
   if ('block' in outcome) return outcome.block;
 
-  // A tree-mutating install goes through the mode-aware write path (native vs container by project mode,
-  // shared with approve-builds and upgrade --write). Everything else (run, audit, read-only) has no tree
-  // to place, so it runs contained as before.
-  // The write path (native vs container by mode), the read-only/run paths (contained), the build-approval
-  // loop, and the egress prompt all live in src/write.ts behind one entry. cli stays the wiring layer.
+  // A tree-mutating install goes through the write path (screen, then install natively on the host),
+  // shared with approve-builds and upgrade --write. Everything else (run, audit, read-only) has no tree
+  // to place, so it runs natively as a pass-through. The write path and the build-approval loop live in
+  // src/write.ts behind one entry; cli stays the wiring layer.
   return runWrite(writeCtx, outcome.route);
 }
 

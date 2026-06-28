@@ -565,7 +565,7 @@ describe('planRiskHintLog, invisible when clean, clear when not', () => {
     expect(lines[2]!.text).toContain('sharp@0.99.0');
     expect(lines[2]!.text).toContain('!! very recently published'); // strong recent_version gets the !! emphasis
     expect(lines[2]!.text).toContain('adds bin: sharp -> ./cli.js'); // bin still shown as a sub-line next to a real finding
-    expect(lines.at(-1)).toEqual({ level: 'info', text: expect.stringContaining('Want the real boundary too?') as unknown as string });
+    expect(lines.at(-1)).toEqual({ level: 'info', text: expect.stringContaining('not a hard boundary') as unknown as string });
   });
 
   it('a bin is the only signal: package stays silent (debug) and the run reads as clean', () => {

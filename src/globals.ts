@@ -5,8 +5,6 @@
  */
 export interface Globals {
   config?: string;
-  image?: string;
-  backend: 'docker' | 'podman';
   json: boolean;
   format?: 'human' | 'json' | 'agent';
   frozen: boolean;

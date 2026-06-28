@@ -47,7 +47,6 @@ describe('presets', () => {
   it('vibe enables dev servers but keeps host creds out', () => {
     const v = presetConfig('vibe');
     expect(v.run.network).toBe('on');
-    expect(v.run.devPorts).toBe(true);
     expect(v.install.network).toBe('allowlist'); // registry-only install preserved
     expect(v.grants['ssh-agent']).toBe(false);
     expect(v.grants.claude).toBe('none');
@@ -56,7 +55,6 @@ describe('presets', () => {
   it('agent is vibe plus project-scoped AI config, still no host creds', () => {
     const a = presetConfig('agent');
     expect(a.run.network).toBe('on');
-    expect(a.run.devPorts).toBe(true);
     expect(a.grants.claude).toBe('project');
     expect(a.grants['ssh-agent']).toBe(false);
     expect(a.install.canaries).toBe(true); // unattended installs get the honeytoken tripwire

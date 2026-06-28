@@ -2,7 +2,6 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import * as p from '@clack/prompts';
 import { LOCAL_CONFIG_NAME, writeConfig, type SandboxConfig } from './config.js';
-import { installAgentHook, MANUAL_AGENT_SNIPPET, type HookInstall } from './hook.js';
 import { projectModeLabel } from './mode.js';
 import { resolvePackageManager, type PackageManager } from './package-manager.js';
 import { PRESETS, PRESET_NAMES, presetConfig, type PresetName } from './presets.js';
@@ -82,17 +81,14 @@ export function writeAgentInstructions(cwd: string): string {
 
 export interface AgentArtifacts {
   agentFile: string;
-  /** PreToolUse hook script + the `.claude/settings.json` it was (or wasn't) wired into. */
-  hook: HookInstall;
 }
 
 /**
- * The agent preset's repo-local setup: the advisory `AGENT.md` plus the *enforced*
- * PreToolUse hook that blocks a bare `npm install`/`npx …` on the host so it has to go
- * through `sandbox`. AGENT.md asks; the hook makes it mandatory.
+ * The agent preset's repo-local setup: the advisory `AGENT.md` that tells the agent to route
+ * installs through `screen` so the gate engine vets every dependency before it lands.
  */
 export function writeAgentArtifacts(cwd: string): AgentArtifacts {
-  return { agentFile: writeAgentInstructions(cwd), hook: installAgentHook(cwd) };
+  return { agentFile: writeAgentInstructions(cwd) };
 }
 
 export function initNextCommands(preset: PresetName): string[] {
@@ -106,15 +102,7 @@ export function initTips(preset: PresetName, pm: PackageManager): string[] {
   const tips = [
     `advanced: s${pm} add zod uses the same mode-aware path (native, or contained if the tree already is) with shorter keystrokes; your real ${pm} stays untouched`,
   ];
-  if (preset === 'agent') tips.push('full agent isolation (editor + agent in the jail), sandbox devcontainer init');
   return tips;
-}
-
-/** Loud, non-destructive notice: settings.json couldn't be parsed, so we left it alone. */
-export function printUnwiredHookWarning(settingsRelPath: string): void {
-  console.log(`sandbox: ⚠ ${settingsRelPath} isn't valid JSON, so it was left untouched (nothing lost).`);
-  console.log('sandbox: ⚠ the enforcement hook and secret-deny rules are NOT active. Fix that file, then merge this into it:');
-  for (const line of MANUAL_AGENT_SNIPPET.split('\n')) console.log(`    ${line}`);
 }
 
 export function printInitSummary(preset: PresetName, configFile: string, pm: PackageManager, agent?: AgentArtifacts, addedHosts: string[] = []): void {
@@ -125,12 +113,6 @@ export function printInitSummary(preset: PresetName, configFile: string, pm: Pac
   }
   if (agent) {
     console.log(`sandbox: wrote ${rel(agent.agentFile)} (paste into Claude/Cursor/Codex project instructions)`);
-    console.log(`sandbox: wrote ${rel(agent.hook.script)}`);
-    if (agent.hook.wired) {
-      console.log(`sandbox: wired ${rel(agent.hook.settings)}, a PreToolUse hook blocks bare npm/pnpm/yarn/bun/npx, and .env/secrets are denied to the agent`);
-    } else {
-      printUnwiredHookWarning(rel(agent.hook.settings));
-    }
   }
   console.log('');
   console.log(projectModeLabel('no-deps'));

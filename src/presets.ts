@@ -50,7 +50,7 @@ export const PRESETS: Record<PresetName, Preset> = {
     // Lets dev servers run. Deliberately leaves the release-age gate OFF (warn-only): the
     // recent-version risk hints still flag fresh releases, but exploring/cloning shouldn't be
     // blocked by a freshness gate. Host creds stay out (default).
-    config: { install: { minReleaseAgeDays: 0 }, run: { network: 'on', devPorts: true } },
+    config: { install: { minReleaseAgeDays: 0 }, run: { network: 'on' } },
   },
   agent: {
     name: 'agent',
@@ -59,7 +59,7 @@ export const PRESETS: Record<PresetName, Preset> = {
     // The AI-install path is higher risk (unattended `npm install`), so unlike vibe it keeps the
     // blocking release-age gate on — and plants canaries, since an unattended agent is exactly who
     // you want a credential-theft tripwire watching. Installs are registry-only, so the proxy sees them.
-    config: { install: { minReleaseAgeDays: 3, canaries: true }, run: { network: 'on', devPorts: true }, grants: { claude: 'project' } },
+    config: { install: { minReleaseAgeDays: 3, canaries: true }, run: { network: 'on' }, grants: { claude: 'project' } },
   },
   trusted: {
     name: 'trusted',

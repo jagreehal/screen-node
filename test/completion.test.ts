@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import {
-  BACKEND_VALUES,
   COMPLETION_SHELLS,
   completionScript,
   GLOBAL_FLAGS,
@@ -26,7 +25,7 @@ describe('completionScript', () => {
 
   it('offers the global flags (in each shell’s syntax)', () => {
     // zsh/bash complete the literal `--flag`; fish registers them as `-l flag`.
-    for (const flag of ['--config', '--json', '--dry-run', '--risk', '--backend']) {
+    for (const flag of ['--config', '--json', '--dry-run', '--risk']) {
       expect(GLOBAL_FLAGS).toContain(flag);
       expect(completionScript('zsh'), `zsh → ${flag}`).toContain(flag);
       expect(completionScript('bash'), `bash → ${flag}`).toContain(flag);
@@ -38,7 +37,6 @@ describe('completionScript', () => {
     for (const shell of COMPLETION_SHELLS) {
       const script = completionScript(shell);
       for (const preset of PRESET_VALUES) expect(script, `${shell} preset`).toContain(preset);
-      for (const backend of BACKEND_VALUES) expect(script, `${shell} backend`).toContain(backend);
       for (const risk of RISK_VALUES) expect(script, `${shell} risk`).toContain(risk);
     }
   });

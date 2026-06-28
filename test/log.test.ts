@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 import { createLogger, formatEvent } from '../src/log.js';
-import { parseEgressDenials } from '../src/egress.js';
 
 describe('formatEvent', () => {
   it('renders human lines with a level prefix and fields', () => {
@@ -36,18 +35,3 @@ describe('createLogger', () => {
   });
 });
 
-describe('parseEgressDenials', () => {
-  it('extracts refused hosts and dedupes', () => {
-    const logs = [
-      'NOTICE    Jun 08 16:42:04 [1]: Proxying refused on filtered domain "exfil.example.com"',
-      'CONNECT   ...: Established connection to host "registry.npmjs.org"',
-      'NOTICE    ...: Proxying refused on filtered domain "exfil.example.com"',
-      'NOTICE    ...: Proxying refused on filtered domain "evil.test"',
-    ].join('\n');
-    expect(parseEgressDenials(logs)).toEqual(['exfil.example.com', 'evil.test']);
-  });
-
-  it('returns empty when nothing was refused', () => {
-    expect(parseEgressDenials('CONNECT ...: Established connection to host "registry.npmjs.org"')).toEqual([]);
-  });
-});
