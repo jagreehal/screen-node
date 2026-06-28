@@ -1,0 +1,192 @@
+---
+// Splash hero (overrides Starlight's default). Gate-first: the everyday product vets a package
+// before it lands, then installs natively by default. The drawn box is the explicit boundary:
+// the risky command runs inside it when the user opts into `sandbox <pm>` or a devcontainer.
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const outside = [
+  '~/.ssh keys',
+  'npm token',
+  'AWS / cloud creds',
+  '.env files',
+  'the rest of the internet',
+];
+---
+
+<div class="hero">
+  <div class="hero__copy">
+    <p class="hero__eyebrow">npm install runs code you never read</p>
+    <h1 class="hero__title">Catch a bad dependency before it lands.</h1>
+    <p class="hero__lede">
+      Type <code>sandbox add zod</code> instead of <code>pnpm add zod</code>.
+      It vets the package first (malware, typosquats, fresh-release worm window), then installs it natively so
+      your IDE gets host-native binaries. Want the real boundary too? Use explicit <code>sandbox pnpm add zod</code>
+      or a devcontainer. Just want to look? <code>sandbox check zod</code> vets it with no install at all.
+    </p>
+
+    <div class="hero__cmd" role="img" aria-label="sandbox add zod">
+      <span class="hero__prompt">$</span> sandbox add&nbsp;zod
+    </div>
+
+    <div class="hero__cta">
+      <a class="btn btn--primary" href={`${base}/quickstart/`}>
+        Quickstart
+        <svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8h10M9 4l4 4-4 4" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </a>
+      <a class="btn btn--ghost" href="https://github.com/jagreehal/sandbox-node">View on GitHub</a>
+    </div>
+    <p class="hero__install"><span>or try it once:</span> <code>npx @jagreehal/sandbox-node@latest check lodash</code></p>
+  </div>
+
+  <div class="hero__diagram">
+    <figure class="boundary">
+      <figcaption class="boundary__label">sandbox pnpm add · explicit throwaway-container boundary</figcaption>
+      <div class="term" aria-hidden="true">
+        <div class="term__bar"><span></span><span></span><span></span></div>
+        <pre class="term__body"><code><span class="l"><span class="c-prompt">$</span> sandbox add lodahs</span>
+<span class="l c-danger">sandbox: ✖ blocked: 'lodahs' looks like a typosquat of 'lodash'</span>
+<span class="l"><span class="c-prompt">$</span> sandbox add zod</span>
+<span class="l c-ok">✓ gates passed, installing natively on the host</span>
+<span class="l c-dim">  (use sandbox pnpm add zod for the throwaway container)</span></code></pre>
+      </div>
+      <ul class="boundary__reach">
+        <li class="reach reach--yes"><span class="reach__mark">✓</span> your project files</li>
+        <li class="reach reach--yes"><span class="reach__mark">✓</span> the npm registry</li>
+      </ul>
+    </figure>
+
+    <ul class="outside" aria-label="kept outside the container">
+      {outside.map((item) => (
+        <li class="outside__item"><span class="outside__mark" aria-hidden="true">✕</span>{item}</li>
+      ))}
+    </ul>
+  </div>
+</div>
+
+<style>
+  .hero {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: var(--space-3xl);
+    align-items: center;
+    padding-block: clamp(2rem, 1rem + 5vw, 4.5rem);
+  }
+  @media (min-width: 56rem) {
+    .hero { grid-template-columns: minmax(0, 0.92fr) minmax(0, 1.08fr); gap: var(--space-4xl); }
+  }
+
+  .hero__eyebrow {
+    font-family: var(--sl-font-mono);
+    font-size: 0.78rem;
+    letter-spacing: 0.02em;
+    color: var(--sbx-ochre);
+    margin: 0 0 var(--space-lg);
+  }
+  .hero__title {
+    font-family: var(--sbx-font-display);
+    font-weight: 680;
+    font-size: clamp(2.1rem, 1.2rem + 4vw, 3.4rem);
+    line-height: 1.02;
+    letter-spacing: -0.03em;
+    margin: 0;
+    color: var(--sl-color-white);
+    text-wrap: balance;
+  }
+  .hero__lede {
+    margin: var(--space-xl) 0 0;
+    max-width: 42ch;
+    color: var(--sl-color-gray-2);
+    font-size: 1.05rem;
+    line-height: 1.6;
+  }
+  .hero__lede code {
+    font-size: 0.86em;
+    color: var(--sl-color-white);
+    background: var(--sl-color-bg-inline-code);
+    padding: 0.08em 0.32em;
+    border-radius: 0.3em;
+  }
+
+  .hero__cmd {
+    margin-top: var(--space-2xl);
+    font-family: var(--sl-font-mono);
+    font-size: 1.05rem;
+    color: var(--sbx-term-fg);
+    background: var(--sbx-term-bg);
+    border: 1px solid var(--sbx-border);
+    border-radius: 0.55rem;
+    padding: 0.85rem 1.1rem;
+  }
+  .hero__prompt { color: var(--sbx-accent); margin-right: 0.5ch; }
+
+  .hero__cta { display: flex; flex-wrap: wrap; gap: var(--space-md); margin-top: var(--space-xl); }
+  .btn {
+    display: inline-flex; align-items: center; gap: 0.5ch;
+    font-weight: 600; font-size: 0.95rem;
+    padding: 0.6rem 1.1rem; border-radius: 0.5rem;
+    text-decoration: none; transition: transform 150ms cubic-bezier(0.2,0.8,0.2,1), background 150ms;
+  }
+  .btn:hover { transform: translateY(-1px); }
+  .btn--primary { background: var(--sbx-accent); color: oklch(0.17 0.012 150); }
+  .btn--primary:hover { background: var(--sbx-accent-bright); }
+  .btn--ghost { color: var(--sl-color-white); border: 1px solid var(--sbx-border); }
+  .btn--ghost:hover { border-color: var(--sbx-accent); }
+
+  .hero__install { margin-top: var(--space-xl); font-size: 0.85rem; color: var(--sl-color-gray-3); }
+  .hero__install span { opacity: 0.8; }
+  .hero__install code { font-family: var(--sl-font-mono); font-size: 0.82rem; color: var(--sl-color-gray-2); }
+
+  /* The boundary: the sage box that contains the risky run */
+  .boundary {
+    margin: 0;
+    position: relative;
+    border: 1.5px solid color-mix(in oklch, var(--sbx-accent) 55%, var(--sbx-border));
+    border-radius: var(--sbx-radius);
+    background: color-mix(in oklch, var(--sbx-accent) 5%, var(--sl-color-bg));
+    padding: var(--space-xl);
+    box-shadow: 0 1px 0 color-mix(in oklch, var(--sbx-accent) 18%, transparent) inset,
+      0 30px 70px -50px oklch(0 0 0 / 0.9);
+  }
+  .boundary__label {
+    font-family: var(--sl-font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--sbx-accent);
+    margin-bottom: var(--space-md);
+  }
+  .term {
+    border-radius: 0.5rem;
+    overflow: hidden;
+    border: 1px solid var(--sbx-border);
+    background: var(--sbx-term-bg);
+  }
+  .term__bar { display: flex; gap: 0.4rem; padding: 0.6rem 0.8rem; border-bottom: 1px solid var(--sbx-border); }
+  .term__bar span { width: 0.55rem; height: 0.55rem; border-radius: 50%; background: var(--sbx-border); }
+  .term__body { margin: 0; padding: 0.9rem 1rem; font-family: var(--sl-font-mono); font-size: 0.8rem; line-height: 1.7; overflow-x: auto; }
+  .term__body code { color: var(--sbx-term-fg); background: none; border: 0; padding: 0; }
+  .l { display: block; }
+  .c-prompt { color: var(--sbx-accent); }
+  .c-dim { color: color-mix(in oklch, var(--sbx-term-fg) 58%, transparent); }
+  .c-ok { color: var(--sbx-accent-bright); }
+  .c-danger { color: var(--sbx-danger); }
+
+  .boundary__reach { list-style: none; margin: var(--space-lg) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-lg); }
+  .reach { display: inline-flex; align-items: center; gap: 0.5ch; font-size: 0.82rem; color: var(--sl-color-gray-2); }
+  .reach__mark { color: var(--sbx-accent); font-weight: 700; }
+
+  .outside { list-style: none; margin: var(--space-lg) 0 0; padding: 0; display: flex; flex-wrap: wrap; gap: var(--space-sm) var(--space-lg); }
+  .outside__item { display: inline-flex; align-items: center; gap: 0.5ch; font-size: 0.8rem; color: var(--sl-color-gray-4); text-decoration: line-through; text-decoration-color: color-mix(in oklch, var(--sbx-danger) 60%, transparent); }
+  .outside__mark { color: var(--sbx-danger); text-decoration: none; font-size: 0.74rem; }
+
+  /* One orchestrated reveal on load */
+  @media (prefers-reduced-motion: no-preference) {
+    .hero__copy > *, .boundary, .outside { animation: rise 620ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+    .hero__title { animation-delay: 40ms; }
+    .hero__lede { animation-delay: 90ms; }
+    .hero__cmd { animation-delay: 140ms; }
+    .hero__cta { animation-delay: 190ms; }
+    .boundary { animation-delay: 220ms; }
+    .outside { animation-delay: 340ms; }
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+</style>

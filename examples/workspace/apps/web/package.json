@@ -1,0 +1,11 @@
+{
+  "name": "sandbox-example-workspace-web",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "whereami": "node -e \"console.log(process.cwd())\""
+  },
+  "dependencies": {
+    "is-odd": "3.0.1"
+  }
+}

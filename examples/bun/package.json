@@ -1,0 +1,10 @@
+{
+  "name": "sandbox-example-bun",
+  "version": "1.0.0",
+  "private": true,
+  "description": "sandbox bun install example",
+  "dependencies": {
+    "sandbox-example-bad-dep": "file:./bad-dep",
+    "is-odd": "3.0.1"
+  }
+}

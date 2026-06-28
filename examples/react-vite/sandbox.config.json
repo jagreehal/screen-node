@@ -1,0 +1,10 @@
+{
+  "install": {
+    "frozen": false,
+    "network": "allowlist"
+  },
+  "run": {
+    "network": "on",
+    "devPorts": true
+  }
+}

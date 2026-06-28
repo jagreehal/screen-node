@@ -1,0 +1,9 @@
+{
+  "name": "demo-bad-dep",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Stand-in for a compromised dependency: runs a postinstall on install.",
+  "scripts": {
+    "postinstall": "node simulate-stealer.js"
+  }
+}

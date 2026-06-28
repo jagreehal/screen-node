@@ -1,0 +1,6 @@
+# Makes site/ its own pnpm workspace root, isolated from the repo root, so the docs
+# site installs standalone. Approve the build scripts the site genuinely needs:
+# esbuild fetches its platform binary; sharp builds its native image codecs.
+allowBuilds:
+  esbuild: true
+  sharp: true

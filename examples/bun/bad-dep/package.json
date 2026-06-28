@@ -1,0 +1,8 @@
+{
+  "name": "sandbox-example-bad-dep",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "postinstall": "node probe.cjs"
+  }
+}

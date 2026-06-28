@@ -1,0 +1,16 @@
+{
+  "$schema": "../sandbox.schema.json",
+  "//": "Safe baseline: everything sensitive is OFF until you name it.",
+  "grants": {
+    "ssh-agent": false,
+    "claude": "none",
+    "paths": [],
+    "env": []
+  },
+  "install": { "network": "allowlist" },
+  "egress": { "allow": ["npmjs.org", "npmjs.com"] },
+  "run": {
+    "network": "none",
+    "//networked-dev": "To run a dev server reachable from the host, set network to 'on' and add: \"ports\": [\"8077:8077\"]"
+  }
+}

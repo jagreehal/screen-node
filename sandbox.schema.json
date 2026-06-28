@@ -1,0 +1,305 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string"
+    },
+    "image": {
+      "default": "node-install-sandbox:latest",
+      "type": "string"
+    },
+    "updateCheck": {
+      "default": true,
+      "type": "boolean"
+    },
+    "off": {
+      "default": false,
+      "type": "boolean"
+    },
+    "grants": {
+      "default": {
+        "ssh-agent": false,
+        "claude": "none",
+        "paths": [],
+        "env": [],
+        "envFiles": []
+      },
+      "type": "object",
+      "properties": {
+        "ssh-agent": {
+          "default": false,
+          "type": "boolean"
+        },
+        "claude": {
+          "default": "none",
+          "type": "string",
+          "enum": [
+            "none",
+            "project",
+            "home"
+          ]
+        },
+        "paths": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "env": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "envFiles": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "ssh-agent",
+        "claude",
+        "paths",
+        "env",
+        "envFiles"
+      ],
+      "additionalProperties": false
+    },
+    "install": {
+      "default": {
+        "network": "allowlist",
+        "frozen": false,
+        "riskHints": "basic",
+        "failOnRisk": false,
+        "minReleaseAgeDays": 0,
+        "minReleaseAgeExclude": [],
+        "failOnAdvisory": false,
+        "malwareFeeds": [],
+        "failOnDeprecated": true,
+        "cache": true,
+        "canaries": false,
+        "failOnSourceWrites": false,
+        "safeInstall": true,
+        "pinExact": false
+      },
+      "type": "object",
+      "properties": {
+        "network": {
+          "default": "allowlist",
+          "type": "string",
+          "enum": [
+            "none",
+            "on",
+            "allowlist"
+          ]
+        },
+        "frozen": {
+          "default": false,
+          "type": "boolean"
+        },
+        "riskHints": {
+          "default": "basic",
+          "type": "string",
+          "enum": [
+            "off",
+            "basic",
+            "thorough"
+          ]
+        },
+        "failOnRisk": {
+          "default": false,
+          "type": "boolean"
+        },
+        "minReleaseAgeDays": {
+          "default": 0,
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 9007199254740991
+        },
+        "minReleaseAgeExclude": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "failOnAdvisory": {
+          "default": false,
+          "type": "boolean"
+        },
+        "malwareFeeds": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "failOnDeprecated": {
+          "default": true,
+          "type": "boolean"
+        },
+        "cache": {
+          "default": true,
+          "type": "boolean"
+        },
+        "canaries": {
+          "default": false,
+          "type": "boolean"
+        },
+        "failOnSourceWrites": {
+          "default": false,
+          "type": "boolean"
+        },
+        "safeInstall": {
+          "default": true,
+          "type": "boolean"
+        },
+        "pinExact": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "network",
+        "frozen",
+        "riskHints",
+        "failOnRisk",
+        "minReleaseAgeDays",
+        "minReleaseAgeExclude",
+        "failOnAdvisory",
+        "malwareFeeds",
+        "failOnDeprecated",
+        "cache",
+        "canaries",
+        "failOnSourceWrites",
+        "safeInstall",
+        "pinExact"
+      ],
+      "additionalProperties": false
+    },
+    "egress": {
+      "default": {
+        "allow": [
+          "npmjs.org",
+          "npmjs.com"
+        ]
+      },
+      "type": "object",
+      "properties": {
+        "allow": {
+          "default": [
+            "npmjs.org",
+            "npmjs.com"
+          ],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        }
+      },
+      "required": [
+        "allow"
+      ],
+      "additionalProperties": false
+    },
+    "run": {
+      "default": {
+        "network": "none",
+        "ports": [],
+        "devPorts": false
+      },
+      "type": "object",
+      "properties": {
+        "network": {
+          "default": "none",
+          "type": "string",
+          "enum": [
+            "none",
+            "on",
+            "allowlist"
+          ]
+        },
+        "ports": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              }
+            ]
+          }
+        },
+        "devPorts": {
+          "default": false,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "network",
+        "ports",
+        "devPorts"
+      ],
+      "additionalProperties": false
+    },
+    "build": {
+      "default": {
+        "extraPackages": [],
+        "extraSteps": []
+      },
+      "type": "object",
+      "properties": {
+        "baseImage": {
+          "type": "string"
+        },
+        "nodeVersion": {
+          "type": "string"
+        },
+        "extraPackages": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "extraSteps": {
+          "default": [],
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "customDockerfileUnsafe": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "extraPackages",
+        "extraSteps"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "image",
+    "updateCheck",
+    "off",
+    "grants",
+    "install",
+    "egress",
+    "run",
+    "build"
+  ],
+  "additionalProperties": false
+}

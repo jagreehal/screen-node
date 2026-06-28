@@ -1,0 +1,9 @@
+# Generated when you run the examples (`run.mjs --real`, or `sandbox <pm> install`).
+# Examples are kept as minimal source; generated artefacts stay out of git.
+node_modules/
+.pnpm-store/
+package-lock.json
+pnpm-lock.yaml
+yarn.lock
+bun.lock
+bun.lockb

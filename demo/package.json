@@ -1,0 +1,13 @@
+{
+  "name": "sandbox-demo",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Proves install + lifecycle scripts run only inside the sandbox.",
+  "scripts": {
+    "preinstall": "node scripts/guard.js",
+    "postinstall": "node scripts/postinstall-proof.js"
+  },
+  "dependencies": {
+    "demo-bad-dep": "file:./demo-bad-dep"
+  }
+}

@@ -1,0 +1,12 @@
+node_modules/
+**/node_modules/
+dist/
+*.tsbuildinfo
+.claude-sandbox/
+*.log
+.DS_Store
+
+___*
+
+# Inherited sandbox-node CI; re-author for screen-node with workflow scope
+.github/workflows/

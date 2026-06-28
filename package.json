@@ -1,0 +1,82 @@
+{
+  "name": "@jagreehal/screen-node",
+  "version": "1.0.0",
+  "description": "Screen npm/pnpm/yarn/bun dependencies for known-bad advisories, typosquats, and the release-age worm window before they install. A fast filter, not a cage.",
+  "author": "Jag Reehal",
+  "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jagreehal/screen-node.git"
+  },
+  "homepage": "https://github.com/jagreehal/screen-node#readme",
+  "bugs": "https://github.com/jagreehal/screen-node/issues",
+  "type": "module",
+  "bin": {
+    "screen": "./dist/cli.mjs",
+    "snpm": "./bin/npm.mjs",
+    "spnpm": "./bin/pnpm.mjs",
+    "syarn": "./bin/yarn.mjs",
+    "sbun": "./bin/bun.mjs",
+    "snpx": "./bin/npx.mjs",
+    "sbunx": "./bin/bunx.mjs"
+  },
+  "types": "./dist/index.d.mts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "default": "./dist/index.mjs"
+    },
+    "./cli": {
+      "types": "./dist/cli.d.mts",
+      "default": "./dist/cli.mjs"
+    }
+  },
+  "files": [
+    "bin",
+    "dist",
+    "data",
+    "sandbox.schema.json",
+    "README.md"
+  ],
+  "engines": {
+    "node": ">=20"
+  },
+  "packageManager": "pnpm@11.5.1",
+  "publishConfig": {
+    "access": "public",
+    "provenance": true
+  },
+  "scripts": {
+    "build": "pnpm gen:schema && tsdown",
+    "check:cycles": "tsx scripts/check-import-cycles.ts",
+    "check:install-policy": "tsx scripts/check-install-policy.ts",
+    "check:repo-metadata": "tsx scripts/check-repo-metadata.ts",
+    "check:repo": "pnpm check:cycles && pnpm check:install-policy && pnpm check:repo-metadata",
+    "gen:schema": "tsx scripts/gen-schema.ts",
+    "dev": "tsx src/cli.ts",
+    "lint": "vp lint",
+    "test": "vitest run && pnpm check:repo",
+    "test:integration": "pnpm build && vitest run -c vitest.integration.config.ts",
+    "test:all": "pnpm test && pnpm test:integration",
+    "typecheck": "tsc --noEmit",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "pnpm build && changeset publish"
+  },
+  "dependencies": {
+    "@clack/prompts": "1.5.1",
+    "zod": "4.4.3"
+  },
+  "devDependencies": {
+    "@changesets/cli": "^2.31.0",
+    "@types/node": "25.9.2",
+    "tsdown": "0.22.1",
+    "tsx": "^4.19.2",
+    "typescript": "6.0.3",
+    "vite-plus": "0.1.24",
+    "vitest": "4.1.8"
+  },
+  "overrides": {
+    "esbuild": "0.28.0"
+  }
+}

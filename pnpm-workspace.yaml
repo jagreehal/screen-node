@@ -1,0 +1,13 @@
+# pnpm settings for this repo (we use pnpm — see `packageManager` in package.json).
+# pnpm blocks dependency build scripts by default; allow only trusted ones explicitly.
+allowBuilds:
+  esbuild: true # esbuild's install fetches its prebuilt platform binary
+
+# Supply-chain cooldown: only resolve versions published more than 3 days ago
+# (3 * 24 * 60 = 4320 minutes). Applies when adding/updating deps; a committed
+# lockfile installs as-is. Exclude deps we deliberately keep fresh.
+minimumReleaseAge: 4320
+minimumReleaseAgeExclude:
+  - '@clack/core@1.4.1'
+  - '@clack/prompts@1.5.1'
+  - '@types/node@25.9.2'

@@ -1,0 +1,254 @@
+#!/usr/bin/env bash
+#
+# sandbox — run npm/pnpm installs and dev commands inside a Docker container so
+# that lifecycle scripts (preinstall/postinstall) and node-gyp/binding.gyp code
+# NEVER execute on the host, and can only see what you explicitly grant.
+#
+# Default-deny: no SSH keys, no ~/.npmrc, no ~/.aws, no home dir. You opt in to
+# specific resources via ./sandbox.config.json in the project you run it from.
+#
+# Commands:
+#   sandbox build              build (or rebuild) the sandbox + egress-proxy images
+#   sandbox install [args...]  reproducible install (source + package.json read-only)
+#   sandbox add <pkg...>       add dependency(ies) — the only path that writes package.json
+#   sandbox run -- <cmd...>    run a command in the container (network: off by default)
+#   sandbox shell              interactive shell in the container
+#
+# Network per phase (sandbox.config.json): "none" | "on" | "allowlist".
+#   none      no egress at all
+#   on        full bridge: internet + host services via host.docker.internal
+#   allowlist only egress.allow[] domains, via a default-deny proxy (blocks exfil)
+# Published ports for run/shell: "run": { "ports": ["3000:3000"] }
+#
+set -euo pipefail
+
+SELF="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+IMAGE="node-install-sandbox:latest"
+PROJECT="$PWD"
+CONFIG="$PROJECT/sandbox.config.json"
+
+die()  { echo "sandbox: $*" >&2; exit 1; }
+have() { command -v "$1" >/dev/null 2>&1; }
+
+have docker || die "docker not found on PATH"
+have jq     || die "jq not found (brew install jq)"
+
+# cfg <jq-path> <default>
+cfg() {
+  if [[ -f "$CONFIG" ]]; then
+    local v; v="$(jq -r "$1 // empty" "$CONFIG" 2>/dev/null || true)"
+    [[ -n "$v" ]] && { echo "$v"; return; }
+  fi
+  echo "$2"
+}
+
+build_image() {
+  echo "sandbox: building image $IMAGE ..." >&2
+  docker build -t "$IMAGE" "$SELF"
+}
+ensure_image() { docker image inspect "$IMAGE" >/dev/null 2>&1 || build_image; }
+
+# ---- egress allowlist proxy ------------------------------------------------
+# Two networks: sandbox sits on an --internal net (NO direct route off-box) and
+# can only reach the proxy; the proxy also sits on a normal net and forwards ONLY
+# to egress.allow[] domains. So even malware that ignores HTTP_PROXY is contained:
+# there is no other way out.
+PROXY_IMAGE="node-install-sandbox-proxy:latest"
+# Per-invocation names so two runs never share a network/proxy, and no other
+# container can attach to the internal net while it's live (default-deny topology).
+RUN_ID="$$"
+NET_INTERNAL="sbx_int_$RUN_ID"
+NET_EGRESS="sbx_egr_$RUN_ID"
+PROXY_NAME="sbx_proxy_$RUN_ID"
+PROXY_URL="http://$PROXY_NAME:8888"
+
+build_proxy() {
+  echo "sandbox: building proxy image $PROXY_IMAGE ..." >&2
+  docker build -t "$PROXY_IMAGE" "$SELF/proxy"
+}
+ensure_proxy() { docker image inspect "$PROXY_IMAGE" >/dev/null 2>&1 || build_proxy; }
+
+egress_up() {
+  ensure_proxy
+  docker network create --internal "$NET_INTERNAL" >/dev/null
+  docker network create "$NET_EGRESS" >/dev/null
+  local allow; allow="$(jq -r '(.egress.allow // []) | join(",")' "$CONFIG" 2>/dev/null || true)"
+  [[ -z "$allow" ]] && allow="npmjs.org,npmjs.com"
+  docker run -d --rm --name "$PROXY_NAME" --network "$NET_INTERNAL" -e ALLOW="$allow" "$PROXY_IMAGE" >/dev/null
+  docker network connect "$NET_EGRESS" "$PROXY_NAME" >/dev/null
+  echo "sandbox: egress proxy up — allow: $allow" >&2
+}
+egress_down() {
+  docker rm -f "$PROXY_NAME" >/dev/null 2>&1 || true
+  docker network rm "$NET_INTERNAL" "$NET_EGRESS" >/dev/null 2>&1 || true
+}
+# Bring the proxy up (and schedule teardown) iff this phase uses allowlist egress.
+maybe_egress() { [[ "$1" == "allowlist" ]] && { egress_up; trap egress_down EXIT; }; return 0; }
+
+# Append published ports for run/shell (skipped when network is none).
+port_args() {
+  local net="$1"; [[ "$net" == "none" ]] && return 0
+  while IFS= read -r p; do [[ -n "$p" ]] && printf '%s\n' -p "$p"; done \
+    < <(jq -r '.run.ports[]?' "$CONFIG" 2>/dev/null || true)
+}
+
+# The package manager's lockfile name (also used to scope install's writable surface).
+lockfile() {
+  if   [[ -f "$PROJECT/pnpm-lock.yaml" ]]; then echo "pnpm-lock.yaml";
+  elif [[ -f "$PROJECT/yarn.lock"      ]]; then echo "yarn.lock";
+  else echo "package-lock.json"; fi
+}
+
+# Emit docker run args, one token per line.
+#   $1 = network policy: none | on | allowlist
+#   $2 = phase:          install | run
+docker_args() {
+  local net="$1" phase="${2:-run}"
+
+  printf '%s\n' \
+    --rm \
+    -e SANDBOX=1 \
+    -e CI= \
+    -e HOME=/root \
+    -w /workspace \
+    --security-opt no-new-privileges \
+    --cap-drop ALL
+
+  if [[ "$phase" == "install" ]]; then
+    # MINIMUM WRITABLE SURFACE (#1): the source tree is READ-ONLY, so a hostile
+    # postinstall cannot persist by writing .github/setup.js, .claude/settings.json,
+    # .git/hooks, source, etc. (exactly the worm's persistence step). Only
+    # node_modules and the lockfile are writable — what a real install must touch.
+    local lf; lf="$(lockfile)"
+    printf '%s\n' \
+      -v "$PROJECT":/workspace:ro \
+      -v "$PROJECT/node_modules":/workspace/node_modules \
+      -v "$PROJECT/$lf":/workspace/"$lf"
+  else
+    # run/shell: your dev loop — full read-write tree so editing + hot reload work.
+    printf '%s\n' -v "$PROJECT":/workspace
+  fi
+
+  case "$net" in
+    none)
+      printf '%s\n' --network none ;;
+    allowlist)
+      # Only the proxy is reachable (internal net); force all clients through it.
+      printf '%s\n' \
+        --network "$NET_INTERNAL" \
+        -e "HTTP_PROXY=$PROXY_URL"  -e "HTTPS_PROXY=$PROXY_URL" \
+        -e "http_proxy=$PROXY_URL"  -e "https_proxy=$PROXY_URL" \
+        -e "npm_config_proxy=$PROXY_URL" -e "npm_config_https_proxy=$PROXY_URL" ;;
+    *)
+      # network on: reach the internet AND host services via host.docker.internal
+      printf '%s\n' --add-host=host.docker.internal:host-gateway ;;
+  esac
+
+  # ---- grants (everything below is opt-in; default is deny) -----------------
+
+  # SSH: forward the AGENT socket, not key files. The container can sign git
+  # pushes; the private-key bytes never cross the boundary, so a hostile
+  # postinstall has nothing to steal. (Requires Docker Desktop on macOS.)
+  if [[ "$(cfg '.grants["ssh-agent"]' false)" == "true" ]]; then
+    printf '%s\n' \
+      -v /run/host-services/ssh-auth.sock:/ssh-agent \
+      -e SSH_AUTH_SOCK=/ssh-agent
+  fi
+
+  # Claude config: none | project (./.claude-sandbox) | home (~/.claude, leaky).
+  # Mounted at /root/.claude because the container runs as root with HOME=/root,
+  # so tooling that reads ~/.claude actually finds it (#2).
+  case "$(cfg '.grants.claude' none)" in
+    project) printf '%s\n' -v "$PROJECT/.claude-sandbox":/root/.claude ;;
+    home)    printf '%s\n' -v "$HOME/.claude":/root/.claude ;;
+  esac
+
+  # Explicit path grants, e.g. ["./data:rw", "~/datasets:ro"] -> /grants/<name>.
+  while IFS= read -r spec; do
+    [[ -z "$spec" ]] && continue
+    local src mode
+    if [[ "$spec" == *:* ]]; then src="${spec%:*}"; mode="${spec##*:}"; else src="$spec"; mode="ro"; fi
+    src="${src/#\~/$HOME}"
+    [[ "$src" != /* ]] && src="$PROJECT/$src"
+    local base ro; base="$(basename "$src")"; ro=""
+    [[ "$mode" == "ro" ]] && ro=",readonly"
+    printf '%s\n' --mount "type=bind,source=$src,target=/grants/$base$ro"
+  done < <(jq -r '.grants.paths[]?' "$CONFIG" 2>/dev/null || true)
+
+  # Explicit env var pass-through by NAME (never bulk-forward the host env).
+  while IFS= read -r e; do [[ -n "$e" ]] && printf '%s\n' -e "$e"; done \
+    < <(jq -r '.grants.env[]?' "$CONFIG" 2>/dev/null || true)
+}
+
+# Package-manager argv for a phase (no shell string — args passed verbatim, #3).
+#   mode=install -> reproducible install from the manifest/lockfile
+#   mode=add     -> add the given package(s): pnpm/yarn `add`, npm `install <pkg>`
+pm_argv() {
+  local mode="$1"
+  if [[ -f "$PROJECT/pnpm-lock.yaml" ]]; then
+    [[ "$mode" == add ]] && printf '%s\n' corepack pnpm add || printf '%s\n' corepack pnpm install
+  elif [[ -f "$PROJECT/yarn.lock" ]]; then
+    [[ "$mode" == add ]] && printf '%s\n' corepack yarn add || printf '%s\n' corepack yarn install
+  else
+    printf '%s\n' npm install   # npm uses `install` for both; `install <pkg>` adds
+  fi
+}
+
+# Shared install/add path. $1 = mode (install|add); rest = package-manager args.
+# Manifest mutation is keyed to the COMMAND, never to arg shape: `add` makes
+# package.json writable, `install` never does (so selectors like `--workspace api`
+# or `--filter web` can't silently widen the writable surface, #heuristic-fix).
+do_install() {
+  local mode="$1"; shift
+  ensure_image
+  local net; net="$(cfg '.install.network' on)"
+  mkdir -p "$PROJECT/node_modules"
+  local lf; lf="$(lockfile)"; [[ -e "$PROJECT/$lf" ]] || : > "$PROJECT/$lf"
+  maybe_egress "$net"
+  mapfile -t A < <(docker_args "$net" install)
+  local note=""
+  if [[ "$mode" == add ]]; then
+    [[ -e "$PROJECT/package.json" ]] || : > "$PROJECT/package.json"
+    A+=(-v "$PROJECT/package.json":/workspace/package.json)
+    note=", package.json: writable"
+  fi
+  mapfile -t PM < <(pm_argv "$mode")
+  echo "sandbox: $mode — network: $net, source: read-only$note, host creds: none (+ grants)" >&2
+  docker run "${A[@]}" "$IMAGE" "${PM[@]}" "$@"
+}
+
+# run/shell: execute the given argv in a read-write container (shell = run bash -l).
+do_run() {
+  ensure_image
+  local net; net="$(cfg '.run.network' none)"
+  maybe_egress "$net"
+  mapfile -t A < <(docker_args "$net" run)
+  while IFS= read -r p; do A+=("$p"); done < <(port_args "$net")
+  local ti="-i"; [ -t 0 ] && ti="-it"
+  docker run "$ti" "${A[@]}" "$IMAGE" "$@"
+}
+
+usage() { sed -n '3,21p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'; }
+
+cmd="${1:-help}"; shift || true
+case "$cmd" in
+  build) build_image; build_proxy ;;
+
+  install) do_install install "$@" ;;
+
+  add)
+    [[ $# -gt 0 ]] || die "usage: sandbox add <pkg>...  (deliberate package.json change)"
+    do_install add "$@"
+    ;;
+
+  run)
+    [[ "${1:-}" == "--" ]] && shift || true
+    [[ $# -gt 0 ]] || die "usage: sandbox run -- <cmd...>"
+    do_run "$@"
+    ;;
+
+  shell) do_run bash -l ;;
+
+  help|--help|-h) usage ;;
+  *) die "unknown command '$cmd' (try: build | install | add | run | shell)" ;;
+esac

@@ -1,0 +1,26 @@
+{
+  "$schema": "./sandbox.schema.json",
+  "image": "node-install-sandbox:latest",
+  "grants": {
+    "ssh-agent": false,
+    "claude": "none",
+    "paths": [],
+    "env": [],
+    "envFiles": []
+  },
+  "install": {
+    "network": "allowlist",
+    "frozen": true,
+    "minReleaseAgeDays": 3
+  },
+  "egress": {
+    "allow": [
+      "npmjs.org",
+      "npmjs.com"
+    ]
+  },
+  "run": {
+    "network": "none",
+    "ports": []
+  }
+}

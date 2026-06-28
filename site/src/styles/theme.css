@@ -1,0 +1,193 @@
+/* ============================================================================
+   sandbox-node docs — "the contained box"
+   Warm near-black canvas, one desaturated sage accent that means sealed / safe /
+   ✓ done, a warm ochre for the honest "heads-up / not protected" caveats. Calm and
+   institutional, never neon. OKLCH throughout; neutrals tinted toward the sage hue.
+   ============================================================================ */
+
+:root {
+  /* Type — none from the reflex/banned list */
+  --sl-font: 'Public Sans', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --sl-font-mono: 'Geist Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --sbx-font-display: 'Schibsted Grotesk', var(--sl-font);
+
+  /* The accent: a desaturated sage that reads "sealed / safe / ✓". Rare by design. */
+  --sbx-accent: oklch(0.74 0.11 158);
+  --sbx-accent-bright: oklch(0.82 0.1 160);
+  --sbx-accent-dim: oklch(0.5 0.08 158);
+  /* Honest caveat colour — warm ochre, calm not alarming. */
+  --sbx-ochre: oklch(0.79 0.12 75);
+  --sbx-danger: oklch(0.64 0.16 25);
+
+  /* 4pt spacing scale */
+  --space-xs: 0.25rem;
+  --space-sm: 0.5rem;
+  --space-md: 0.75rem;
+  --space-lg: 1rem;
+  --space-xl: 1.5rem;
+  --space-2xl: 2rem;
+  --space-3xl: 3rem;
+  --space-4xl: 4.5rem;
+
+  --sbx-radius: 0.7rem;
+  --sl-nav-height: 4rem;
+}
+
+html {
+  font-synthesis: none;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  letter-spacing: -0.011em;
+}
+
+/* ---- Dark theme (primary — developer + terminal context) ----------------- */
+:root,
+:root[data-theme='dark'] {
+  --sl-color-accent-low: oklch(0.28 0.05 158);
+  --sl-color-accent: var(--sbx-accent);
+  --sl-color-accent-high: oklch(0.88 0.06 162);
+
+  --sl-color-white: oklch(0.96 0.006 120);
+  --sl-color-gray-1: oklch(0.93 0.008 130);
+  --sl-color-gray-2: oklch(0.84 0.008 135);
+  --sl-color-gray-3: oklch(0.66 0.009 140); /* muted text — AA on canvas */
+  --sl-color-gray-4: oklch(0.5 0.01 145);
+  --sl-color-gray-5: oklch(0.34 0.012 150);
+  --sl-color-gray-6: oklch(0.26 0.013 150);
+  --sl-color-black: oklch(0.17 0.012 150);
+
+  --sl-color-text: oklch(0.92 0.008 130);
+  --sl-color-text-accent: var(--sbx-accent-bright);
+
+  --sl-color-bg: oklch(0.17 0.012 150);
+  --sl-color-bg-nav: oklch(0.155 0.012 150);
+  --sl-color-bg-sidebar: oklch(0.155 0.012 150);
+  --sl-color-bg-inline-code: oklch(0.24 0.014 150);
+  --sl-color-hairline-shade: oklch(0.26 0.013 150);
+
+  --astro-code-color-background: oklch(0.205 0.014 150);
+  --astro-code-color-text: oklch(0.9 0.008 130);
+
+  --sbx-surface: oklch(0.205 0.013 150);
+  --sbx-border: oklch(0.3 0.013 150);
+  --sbx-term-bg: oklch(0.145 0.013 150);
+  /* The terminal box is dark in BOTH themes, so its text needs a fixed light foreground. Defined only
+     here (the light theme block does not override it), so it never flips to dark like --sl-color-white
+     does in light mode (which made the dark command box render dark-on-dark, unreadable). */
+  --sbx-term-fg: oklch(0.93 0.012 150);
+}
+
+/* ---- Light theme (warm paper, for daylight doc reading) ------------------ */
+:root[data-theme='light'] {
+  --sl-color-accent-low: oklch(0.92 0.04 160);
+  --sl-color-accent: oklch(0.52 0.12 158);
+  --sl-color-accent-high: oklch(0.4 0.1 158);
+
+  --sl-color-white: oklch(0.22 0.015 150);
+  --sl-color-gray-1: oklch(0.27 0.014 150);
+  --sl-color-gray-2: oklch(0.36 0.013 150);
+  --sl-color-gray-3: oklch(0.48 0.012 150);
+  --sl-color-gray-4: oklch(0.6 0.011 150);
+  --sl-color-gray-5: oklch(0.86 0.008 120);
+  --sl-color-gray-6: oklch(0.92 0.007 110);
+  --sl-color-gray-7: oklch(0.95 0.006 100);
+  --sl-color-black: oklch(0.97 0.006 90);
+
+  --sl-color-text: oklch(0.26 0.015 150);
+  --sl-color-text-accent: oklch(0.46 0.11 158);
+
+  --sl-color-bg: oklch(0.97 0.006 90);
+  --sl-color-bg-nav: oklch(0.985 0.005 90);
+  --sl-color-bg-sidebar: oklch(0.985 0.005 90);
+  --sl-color-bg-inline-code: oklch(0.93 0.008 110);
+
+  --astro-code-color-background: oklch(0.945 0.007 100);
+  --astro-code-color-text: oklch(0.26 0.015 150);
+
+  --sbx-accent: oklch(0.52 0.12 158);
+  --sbx-accent-bright: oklch(0.46 0.11 158);
+  --sbx-ochre: oklch(0.58 0.12 70);
+  --sbx-surface: oklch(0.99 0.005 90);
+  --sbx-border: oklch(0.88 0.008 110);
+  --sbx-term-bg: oklch(0.21 0.014 150);
+}
+
+/* ---- Baseline ------------------------------------------------------------ */
+body {
+  font-family: var(--sl-font);
+  font-size: 15px;
+  line-height: 1.6;
+  letter-spacing: -0.011em;
+}
+
+/* Display face on the wordmark + content headings */
+.site-title,
+.sl-markdown-content h1,
+.sl-markdown-content h2,
+.sl-markdown-content h3 {
+  font-family: var(--sbx-font-display);
+  font-weight: 600;
+  letter-spacing: -0.02em;
+}
+.site-title { letter-spacing: -0.03em; font-weight: 700; }
+
+.sl-markdown-content h1 { font-size: clamp(1.9rem, 1.3rem + 2.4vw, 2.6rem); line-height: 1.08; }
+.sl-markdown-content h2 { font-size: 1.45rem; line-height: 1.2; margin-top: 2.75rem; }
+.sl-markdown-content h3 { font-size: 1.12rem; line-height: 1.35; letter-spacing: -0.015em; }
+.sl-markdown-content p,
+.sl-markdown-content li { max-width: 72ch; }
+
+/* Inline code — Geist Mono runs a touch large; trim to match x-height */
+.sl-markdown-content :not(pre) > code {
+  font-size: 0.86em;
+  border: 1px solid color-mix(in oklch, var(--sbx-border) 60%, transparent);
+  border-radius: 0.34em;
+  padding: 0.12em 0.36em;
+}
+
+/* Links: solid colour + a quiet underline that firms up on hover (no gradient text) */
+.sl-markdown-content a {
+  color: var(--sl-color-text-accent);
+  text-decoration-color: color-mix(in oklch, var(--sbx-accent) 45%, transparent);
+  text-underline-offset: 0.18em;
+  transition: text-decoration-color 150ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+.sl-markdown-content a:hover { text-decoration-color: var(--sbx-accent); }
+
+/* Code blocks: full border + soft depth, no rainbow chrome */
+.sl-markdown-content .expressive-code,
+.sl-markdown-content pre {
+  border-radius: var(--sbx-radius);
+}
+
+/* Asides: full border + a tinted surface, never a side-stripe */
+.sl-markdown-content .starlight-aside {
+  border: 1px solid var(--sbx-border);
+  border-radius: var(--sbx-radius);
+  background: color-mix(in oklch, var(--sbx-surface) 70%, var(--sl-color-bg));
+  padding-inline: var(--space-xl);
+}
+.sl-markdown-content .starlight-aside--tip,
+.sl-markdown-content .starlight-aside--note {
+  --sl-color-asides-text-accent: var(--sbx-accent-bright);
+}
+.sl-markdown-content .starlight-aside--caution {
+  --sl-color-asides-text-accent: var(--sbx-ochre);
+  background: color-mix(in oklch, var(--sbx-ochre) 9%, var(--sl-color-bg));
+  border-color: color-mix(in oklch, var(--sbx-ochre) 35%, var(--sbx-border));
+}
+.sl-markdown-content .starlight-aside--danger {
+  --sl-color-asides-text-accent: var(--sbx-danger);
+  border-color: color-mix(in oklch, var(--sbx-danger) 35%, var(--sbx-border));
+}
+
+/* Tables read as data, not boxes */
+.sl-markdown-content table { font-size: 0.92rem; }
+.sl-markdown-content th { font-weight: 600; color: var(--sl-color-white); }
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
