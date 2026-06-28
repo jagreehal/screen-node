@@ -73,7 +73,7 @@
     "tsdown": "0.22.1",
     "tsx": "^4.19.2",
     "typescript": "6.0.3",
-    "vite-plus": "0.1.24",
+    "vite-plus": "0.2.1",
     "vitest": "4.1.8"
   },
   "overrides": {
