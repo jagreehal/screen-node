@@ -86,10 +86,10 @@ describe('runPreflight, single shared resolve', () => {
     const { client, calls } = countingRegistry();
     const result = await runPreflight([{ name: 'sharp', spec: '0.33.5' }], policy({ riskHints: false }), {
       pm: 'npm', cwd: '/x', registryClient: client, now: NOW,
-      knownBad: [{ name: 'sharp', reason: 'team block', severity: 'high', source: 'sandbox.advisories.json' }],
+      knownBad: [{ name: 'sharp', reason: 'team block', severity: 'high', source: 'screen.advisories.json' }],
     });
     expect(calls()).toBe(1); // resolves to get the version even though no other gate is on
-    expect(result.knownBadHits).toEqual([{ name: 'sharp', version: '0.33.5', reason: 'team block', severity: 'high', source: 'sandbox.advisories.json' }]);
+    expect(result.knownBadHits).toEqual([{ name: 'sharp', version: '0.33.5', reason: 'team block', severity: 'high', source: 'screen.advisories.json' }]);
   });
 
   it('matches the blocklist over the whole tree under --deep', async () => {

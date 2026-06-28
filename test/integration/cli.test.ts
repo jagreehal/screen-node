@@ -1,34 +1,8 @@
-import { chmodSync, existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import path from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { fixture, runCli } from './helpers.js';
-
-function fakeDocker(dir: string): string {
-  const bin = path.join(dir, 'docker');
-  writeFileSync(
-    bin,
-    `#!/bin/sh
-if [ "$1" = "--version" ]; then
-  echo "Docker version 27.0.0"
-  exit 0
-fi
-if [ "$1" = "info" ]; then
-  echo "server ready"
-  exit 0
-fi
-if [ "$1" = "image" ] && [ "$2" = "inspect" ]; then
-  exit 1
-fi
-if [ "$1" = "build" ]; then
-  exit 0
-fi
-exit 0
-`,
-  );
-  chmodSync(bin, 0o755);
-  return dir;
-}
 
 async function withRegistry(packuments: Record<string, unknown>, run: (url: string) => Promise<void>): Promise<void> {
   const server = createServer((req, res) => {
@@ -59,7 +33,7 @@ describe('cli (golden, no docker)', () => {
     expect(stdout).toContain('Quick start:');
     expect(stdout).toContain('screen install');
     expect(stdout).toContain('screen add zod');
-    for (const token of ['init', 'setup', 'allow', 'check', 'preflight', 'doctor', 'build', 'install', 'add', 'remove', 'run', 'shell', '--config', '--image', '--backend', '--dev', '--interactive', '--full-network', '--frozen', '--risk', '--fail-on-risk', '--json']) {
+    for (const token of ['init', 'setup', 'allow', 'check', 'preflight', 'doctor', 'install', 'add', 'remove', 'run', '--config', '--frozen', '--risk', '--fail-on-risk', '--json']) {
       expect(stdout).toContain(token);
     }
   });
@@ -73,11 +47,11 @@ describe('cli (golden, no docker)', () => {
     expect(stderr).toContain('screening is off (SCREEN_OFF)');
   });
 
-  it('`sandbox off` git-ignores the personal override so it can\'t be committed for the whole team', async () => {
+  it('`screen off` git-ignores the personal override so it can\'t be committed for the whole team', async () => {
     const dir = fixture({ 'package.json': '{"name":"x"}' }); // no init/setup run → no .gitignore yet
     const { code, stderr } = await runCli(dir, ['off']);
     expect(code).toBe(0);
-    expect(stderr).toContain('containment is now off for this project');
+    expect(stderr).toContain('screening is now off for this project');
     expect(existsSync(path.join(dir, 'screen.config.local.json'))).toBe(true);
     expect(readFileSync(path.join(dir, '.gitignore'), 'utf8')).toContain('screen.config.local.json');
   });
@@ -114,7 +88,7 @@ describe('cli (golden, no docker)', () => {
       },
       async (url) => {
         const { code, stderr } = await runCli(dir, ['--fail-on-risk', 'npm', 'install', 'sharp@0.33.5'], {
-          SANDBOX_NPM_REGISTRY: url,
+          SCREEN_NPM_REGISTRY: url,
         });
         expect(code).toBe(1);
         expect(stderr).toContain('checked 1 package');
@@ -153,7 +127,7 @@ describe('cli (golden, no docker)', () => {
       },
       async (url) => {
         const { code, stderr } = await runCli(dir, ['--fail-on-risk', 'npm', 'install', '--foreground-scripts'], {
-          SANDBOX_NPM_REGISTRY: url,
+          SCREEN_NPM_REGISTRY: url,
         });
         expect(code).toBe(1);
         expect(stderr).toContain('checked 1 package');
@@ -174,7 +148,7 @@ describe('cli (golden, no docker)', () => {
         },
       },
       async (url) => {
-        const { code, stderr } = await runCli(dir, ['--fail-on-risk', 'npx', 'sharp@0.33.5'], { SANDBOX_NPM_REGISTRY: url });
+        const { code, stderr } = await runCli(dir, ['--fail-on-risk', 'npx', 'sharp@0.33.5'], { SCREEN_NPM_REGISTRY: url });
         expect(code).toBe(1); // blocked before the container runs
         expect(stderr).toContain('checked 1 package');
         expect(stderr).toContain('has postinstall script (runs on your host during install)');
@@ -196,7 +170,7 @@ describe('cli (golden, no docker)', () => {
         },
       },
       async (url) => {
-        const { code, stderr } = await runCli(dir, ['--min-release-age', '7', 'preflight', 'npm', 'install', 'left-pad'], { SANDBOX_NPM_REGISTRY: url });
+        const { code, stderr } = await runCli(dir, ['--min-release-age', '7', 'preflight', 'npm', 'install', 'left-pad'], { SCREEN_NPM_REGISTRY: url });
         expect(code).toBe(1); // would block — but nothing installed (no backend invoked)
         expect(stderr).toContain('blocked by the release-age gate (min 7 days)');
         expect(stderr).toContain('screen npm add left-pad@1.2.0'); // the concrete pin
@@ -221,7 +195,7 @@ describe('cli (golden, no docker)', () => {
       async (url) => {
         // Bare name, no `npm install` prefix — the direct package-name form. No --fail-on-advisory needed:
         // `check` always queries, and --min-release-age makes the age gate block.
-        const { code, stderr } = await runCli(dir, ['--min-release-age', '7', 'check', 'left-pad'], { SANDBOX_NPM_REGISTRY: url });
+        const { code, stderr } = await runCli(dir, ['--min-release-age', '7', 'check', 'left-pad'], { SCREEN_NPM_REGISTRY: url });
         expect(code).toBe(1);
         expect(stderr).toContain('blocked by the release-age gate (min 7 days)');
         expect(stderr).toContain('screen npm add left-pad@1.2.0');
@@ -240,7 +214,7 @@ describe('cli (golden, no docker)', () => {
     await withRegistry(
       { 'left-pad': { name: 'left-pad', ...fresh('1.3.0') }, 'is-odd': { name: 'is-odd', ...fresh('3.0.1') } },
       async (url) => {
-        const { code, stdout } = await runCli(dir, ['--json', '--min-release-age', '7', 'check'], { SANDBOX_NPM_REGISTRY: url });
+        const { code, stdout } = await runCli(dir, ['--json', '--min-release-age', '7', 'check'], { SCREEN_NPM_REGISTRY: url });
         const out = JSON.parse(stdout);
         expect(code).toBe(1);
         const flagged = out.ageViolations.map((v: { name: string }) => v.name).sort();
@@ -261,7 +235,7 @@ describe('cli (golden, no docker)', () => {
       { 'left-pad': { name: 'left-pad', ...fresh('1.3.0') }, 'is-odd': { name: 'is-odd', ...fresh('3.0.1') } },
       async (url) => {
         // Only the api manifest → only left-pad is audited (is-odd lives in the web package).
-        const { code, stdout } = await runCli(dir, ['--json', '--min-release-age', '7', 'check', 'packages/api/package.json'], { SANDBOX_NPM_REGISTRY: url });
+        const { code, stdout } = await runCli(dir, ['--json', '--min-release-age', '7', 'check', 'packages/api/package.json'], { SCREEN_NPM_REGISTRY: url });
         const out = JSON.parse(stdout);
         expect(code).toBe(1);
         expect(out.ageViolations.map((v: { name: string }) => v.name)).toEqual(['left-pad']);
@@ -279,7 +253,7 @@ describe('cli (golden, no docker)', () => {
       { 'left-pad': { name: 'left-pad', 'dist-tags': { latest: '1.3.0' }, time: { created: '2020-01-01T00:00:00.000Z', '1.3.0': threeHoursAgo }, versions: { '1.3.0': {} } } },
       async (url) => {
         // Run from packages/api with a bare `package.json` — must audit api's manifest, not the root's.
-        const { code, stdout } = await runCli(path.join(dir, 'packages', 'api'), ['--json', '--min-release-age', '7', 'check', 'package.json'], { SANDBOX_NPM_REGISTRY: url });
+        const { code, stdout } = await runCli(path.join(dir, 'packages', 'api'), ['--json', '--min-release-age', '7', 'check', 'package.json'], { SCREEN_NPM_REGISTRY: url });
         const out = JSON.parse(stdout);
         expect(code).toBe(1); // would have been 0 (checked: 0) when resolving against the root
         expect(out.ageViolations.map((v: { name: string }) => v.name)).toEqual(['left-pad']);
@@ -287,7 +261,7 @@ describe('cli (golden, no docker)', () => {
     );
   });
 
-  it('steers a bare reproduce-install age block toward `sandbox delta` (existing deps, not new ones)', async () => {
+  it('steers a bare reproduce-install age block toward `screen delta` (existing deps, not new ones)', async () => {
     const dir = fixture({ 'package.json': JSON.stringify({ name: 'x', dependencies: { 'left-pad': '^1.3.0' } }) });
     const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString();
     await withRegistry(
@@ -300,7 +274,7 @@ describe('cli (golden, no docker)', () => {
         },
       },
       async (url) => {
-        const { code, stderr } = await runCli(dir, ['--min-release-age', '7', 'preflight', 'npm', 'install'], { SANDBOX_NPM_REGISTRY: url });
+        const { code, stderr } = await runCli(dir, ['--min-release-age', '7', 'preflight', 'npm', 'install'], { SCREEN_NPM_REGISTRY: url });
         expect(code).toBe(1);
         expect(stderr).toContain('blocked by the release-age gate (min 7 days)');
         expect(stderr).toContain('screen delta'); // the low-noise gate for an existing lockfile
@@ -321,7 +295,7 @@ describe('cli (golden, no docker)', () => {
         },
       },
       async (url) => {
-        const { code, stdout } = await runCli(dir, ['--json', '--min-release-age', '7', 'preflight', 'npm', 'install', 'left-pad'], { SANDBOX_NPM_REGISTRY: url });
+        const { code, stdout } = await runCli(dir, ['--json', '--min-release-age', '7', 'preflight', 'npm', 'install', 'left-pad'], { SCREEN_NPM_REGISTRY: url });
         expect(code).toBe(1);
         const report = JSON.parse(stdout);
         expect(report.blocked).toBe(true);
@@ -343,7 +317,7 @@ describe('cli (golden, no docker)', () => {
         },
       },
       async (url) => {
-        const { code, stderr } = await runCli(dir, ['--min-release-age', '7', 'preflight', 'npm', 'install', 'is-odd'], { SANDBOX_NPM_REGISTRY: url });
+        const { code, stderr } = await runCli(dir, ['--min-release-age', '7', 'preflight', 'npm', 'install', 'is-odd'], { SCREEN_NPM_REGISTRY: url });
         expect(code).toBe(0);
         expect(stderr).toContain('no blocking findings, safe to install');
       },
@@ -363,7 +337,7 @@ describe('cli (golden, no docker)', () => {
     const dir = fixture({ 'package.json': '{"name":"x"}' });
     await withRegistry(deprecatedRegistry, async (url) => {
       // No gate flags: riskHints basic is on by default, so the deprecated gate blocks.
-      const { code, stderr } = await runCli(dir, ['npm', 'install', 'old-lib'], { SANDBOX_NPM_REGISTRY: url });
+      const { code, stderr } = await runCli(dir, ['npm', 'install', 'old-lib'], { SCREEN_NPM_REGISTRY: url });
       expect(code).toBe(1); // blocked before the container runs
       expect(stderr).toContain('blocked: a maintainer-deprecated version');
       expect(stderr).toContain('old-lib@2.0.0, deprecated: no longer maintained');
@@ -374,7 +348,7 @@ describe('cli (golden, no docker)', () => {
   it('--allow-deprecated downgrades the deprecated block to a warning', async () => {
     const dir = fixture({ 'package.json': '{"name":"x"}' });
     await withRegistry(deprecatedRegistry, async (url) => {
-      const { code, stderr } = await runCli(dir, ['--allow-deprecated', 'preflight', 'npm', 'install', 'old-lib'], { SANDBOX_NPM_REGISTRY: url });
+      const { code, stderr } = await runCli(dir, ['--allow-deprecated', 'preflight', 'npm', 'install', 'old-lib'], { SCREEN_NPM_REGISTRY: url });
       expect(code).toBe(0);
       expect(stderr).toContain('deprecated version(s) allowed via --allow-deprecated');
     });
@@ -383,7 +357,7 @@ describe('cli (golden, no docker)', () => {
   it('preflight --json reports deprecations in their own field and blocks', async () => {
     const dir = fixture({ 'package.json': '{"name":"x"}' });
     await withRegistry(deprecatedRegistry, async (url) => {
-      const { code, stdout } = await runCli(dir, ['--json', 'preflight', 'npm', 'install', 'old-lib'], { SANDBOX_NPM_REGISTRY: url });
+      const { code, stdout } = await runCli(dir, ['--json', 'preflight', 'npm', 'install', 'old-lib'], { SCREEN_NPM_REGISTRY: url });
       expect(code).toBe(1);
       const report = JSON.parse(stdout);
       expect(report.blocked).toBe(true);
@@ -394,7 +368,7 @@ describe('cli (golden, no docker)', () => {
   it('--risk off disables the deprecated gate (it rides on the risk resolution)', async () => {
     const dir = fixture({ 'package.json': '{"name":"x"}' });
     await withRegistry(deprecatedRegistry, async (url) => {
-      const { code } = await runCli(dir, ['--risk', 'off', 'preflight', 'npm', 'install', 'old-lib'], { SANDBOX_NPM_REGISTRY: url });
+      const { code } = await runCli(dir, ['--risk', 'off', 'preflight', 'npm', 'install', 'old-lib'], { SCREEN_NPM_REGISTRY: url });
       expect(code).toBe(0); // no risk resolution → no deprecated finding → nothing to block
     });
   });
@@ -408,7 +382,7 @@ describe('cli (golden, no docker)', () => {
     await withRegistry(deprecatedRegistry, async (url) => {
       // The deprecated dep lives in packages/db, and the install resolves to the root — the gate still catches it.
       // The local `@me/x: workspace:*` dep is dropped (never resolved against the registry).
-      const { code, stderr } = await runCli(dir, ['preflight', 'pnpm', 'install'], { SANDBOX_NPM_REGISTRY: url });
+      const { code, stderr } = await runCli(dir, ['preflight', 'pnpm', 'install'], { SCREEN_NPM_REGISTRY: url });
       expect(code).toBe(1);
       expect(stderr).toContain('old-lib@2.0.0, deprecated: no longer maintained');
     });
@@ -429,7 +403,7 @@ describe('cli (golden, no docker)', () => {
         },
       },
       async (url) => {
-        const { code, stderr } = await runCli(dir, ['--deep', 'preflight', 'npm', 'install'], { SANDBOX_NPM_REGISTRY: url });
+        const { code, stderr } = await runCli(dir, ['--deep', 'preflight', 'npm', 'install'], { SCREEN_NPM_REGISTRY: url });
         expect(code).toBe(1); // a deprecated dep nobody declared directly still blocks under --deep
         expect(stderr).toContain('scanned 1 resolved packages');
         expect(stderr).toContain('buried-dep@1.0.0, deprecated: unmaintained, do not use');
@@ -437,81 +411,8 @@ describe('cli (golden, no docker)', () => {
     );
   });
 
-  it('--dev opens only run networking + dev ports for one run', async () => {
-    const dir = fixture({ 'package.json': '{"name":"x"}' });
-    const install = JSON.parse((await runCli(dir, ['--json', '--dev', 'npm', 'install'])).stdout);
-    expect(install.network).toBe('allowlist');
-    const dev = JSON.parse((await runCli(dir, ['--json', '--dev', 'npm', 'run', 'dev'])).stdout);
-    expect(dev.network).toBe('on');
-    expect(dev.ports).toContain('5173:5173');
-  });
-
-  it('--full-network opens install and run networking for one run without enabling dev-port publishing', async () => {
-    const dir = fixture({ 'package.json': '{"name":"x"}' });
-    const install = JSON.parse((await runCli(dir, ['--json', '--full-network', 'npm', 'install'])).stdout);
-    expect(install.network).toBe('on');
-    const dev = JSON.parse((await runCli(dir, ['--json', '--full-network', 'npm', 'run', 'dev'])).stdout);
-    expect(dev.network).toBe('on');
-    expect(dev.ports).toEqual([]);
-  });
-
-  it('`sandbox x` uses install-style networking so fetch fallback works without a separate run-network override', async () => {
-    const dir = fixture({ 'package.json': '{"name":"x"}' });
-    const plan = JSON.parse((await runCli(dir, ['--json', 'x', 'vite'])).stdout);
-    expect(plan.network).toBe('allowlist');
-    expect(plan.ports).toEqual([]);
-  });
-
-  it('--allow-build-hosts widens egress to the curated native-build hosts (still default-deny otherwise)', async () => {
-    const dir = fixture({ 'package.json': '{"name":"x"}' });
-    // Force the container (explicit pm form) so the egress allowlist is part of the plan to inspect;
-    // the friendly `install` on a fresh project is mode-aware and would resolve to a native install.
-    const base = JSON.parse((await runCli(dir, ['--json', 'npm', 'install'])).stdout);
-    expect(base.egressAllow).toEqual(['npmjs.org', 'npmjs.com']); // unchanged without the flag
-    const widened = JSON.parse((await runCli(dir, ['--json', '--allow-build-hosts', 'npm', 'install'])).stdout);
-    expect(widened.network).toBe('allowlist'); // still an allowlist, NOT full network
-    expect(widened.egressAllow).toEqual(expect.arrayContaining(['npmjs.org', 'nodejs.org', 'github.com', 'binaries.prisma.sh']));
-    expect(widened.egressAllow).not.toContain('exfil.example.com');
-  });
-
-  it('--json install (forced container): writable root, locked manifest + persistence paths', async () => {
-    // Explicit pm form forces the container, so there is a container plan to inspect; the friendly
-    // `install` is mode-aware (see the native-install tests below).
-    const dir = fixture({ 'package-lock.json': '{}', 'package.json': '{"name":"x"}' });
-    const { code, stdout } = await runCli(dir, ['--json', 'npm', 'install']);
-    expect(code).toBe(0);
-    const plan = JSON.parse(stdout.replaceAll(dir, '<cwd>'));
-    expect(plan.image).toMatch(/^node-install-sandbox:/);
-    expect(plan.env.CI).toBe('1');
-    expect(plan).toMatchObject({
-      argv: ['npm', 'install'],
-      env: { SANDBOX: '1', HOME: '/root' },
-      ports: [],
-      workdir: '/workspace',
-      network: 'allowlist', // default-deny egress
-      egressAllow: ['npmjs.org', 'npmjs.com'],
-      interactive: false,
-      capDrop: ['ALL'],
-      securityOpt: ['no-new-privileges'],
-      addHosts: [], // addHosts only on bridge ("on")
-    });
-    expect(plan.mounts).toContainEqual({ type: 'bind', source: '<cwd>', target: '/workspace', readonly: false });
-    expect(plan.mounts).toContainEqual({ type: 'bind', source: '<cwd>/package.json', target: '/workspace/package.json', readonly: true });
-    expect(plan.mounts).toContainEqual({ type: 'volume', target: '/workspace/.github', readonly: true });
-  });
-
-  it('--json add (forced container) leaves package.json writable and uses the add args', async () => {
-    const dir = fixture({ 'pnpm-lock.yaml': '', 'package.json': '{"name":"x"}' });
-    const { code, stdout } = await runCli(dir, ['--json', 'pnpm', 'add', 'is-number']);
-    expect(code).toBe(0);
-    const plan = JSON.parse(stdout);
-    expect(plan.argv).toEqual(['corepack', 'pnpm', 'add', '--save-exact', 'is-number']);
-    expect(plan.mounts.find((m: { target: string }) => m.target === '/workspace/package.json')).toBeUndefined();
-    expect(plan.mounts).toContainEqual({ type: 'volume', target: '/workspace/.github', readonly: true });
-  });
-
   it('mode-aware: the friendly `install` on a fresh project resolves to a native host install', async () => {
-    // A fresh project (no node_modules) is not a container build, so the everyday `sandbox install`
+    // A fresh project (no node_modules) is not a container build, so the everyday `screen install`
     // installs natively, so the host IDE and tools load the result. --json reports it honestly.
     const dir = fixture({ 'package-lock.json': '{}', 'package.json': '{"name":"x"}' });
     const { code, stdout } = await runCli(dir, ['--json', 'install']);
@@ -536,42 +437,12 @@ describe('cli (golden, no docker)', () => {
     expect(JSON.parse(stdout)).toEqual({ native: true, host: true, argv: ['corepack', 'pnpm', 'install'] });
   });
 
-  it('--json run loads env files from the invocation directory but redacts their values', async () => {
-    const dir = fixture({
-      '.env.local': 'FROM_FILE=local\nOVERRIDE=file\n',
-      'package.json': '{"name":"x"}',
-    });
-    const { code, stdout } = await runCli(dir, ['--env', 'OVERRIDE', '--env-file', '.env.local', '--json', 'run', '--', 'node', 'x.js'], {
-      OVERRIDE: 'host',
-    });
-    expect(code).toBe(0);
-    const plan = JSON.parse(stdout);
-    expect(plan.env.FROM_FILE).toBe('[redacted]');
-    expect(plan.env.OVERRIDE).toBe('[redacted]');
-    expect(plan.env.HOME).toBe('/root');
-  });
-
-  it('config env files resolve from the project root even when invoked from a leaf workspace package', async () => {
-    const dir = fixture({
-      'screen.config.json': JSON.stringify({ grants: { envFiles: ['.env'] } }),
-      '.env': 'FROM_ROOT=1\n',
-      'package.json': JSON.stringify({ private: true, workspaces: ['apps/*'] }),
-      'apps/web/package.json': '{"name":"web"}',
-    });
-    const { code, stdout } = await runCli(path.join(dir, 'apps', 'web'), ['--json', 'run', '--', 'node', 'x.js']);
-    expect(code).toBe(0);
-    const plan = JSON.parse(stdout);
-    expect(plan.env.FROM_ROOT).toBe('[redacted]');
-  });
-
-  it('pass-through: `npm install` maps to the install containment model', async () => {
+  it('pass-through: `npm install` maps to a native host install', async () => {
     const dir = fixture({ 'package-lock.json': '{}', 'package.json': '{"name":"x"}' });
     const { code, stdout } = await runCli(dir, ['--json', 'npm', 'install']);
     expect(code).toBe(0);
-    const plan = JSON.parse(stdout.replaceAll(dir, '<cwd>'));
-    expect(plan.argv).toEqual(['npm', 'install']);
-    expect(plan.workdir).toBe('/workspace');
-    expect(plan.mounts).toContainEqual({ type: 'bind', source: '<cwd>/package.json', target: '/workspace/package.json', readonly: true });
+    const plan = JSON.parse(stdout);
+    expect(plan).toEqual({ native: true, host: true, argv: ['npm', 'install'] });
   });
 
   it('pass-through: `pnpm add` honours the named pm and maps to the add model', async () => {
@@ -581,19 +452,17 @@ describe('cli (golden, no docker)', () => {
     expect(code).toBe(0);
     const plan = JSON.parse(stdout);
     expect(plan.argv).toEqual(['corepack', 'pnpm', 'add', '--save-exact', 'zod']);
-    expect(plan.mounts.find((m: { target: string }) => m.target === '/workspace/package.json')).toBeUndefined(); // writable manifest
   });
 
-  it('pass-through: `npm run dev` maps to the run model', async () => {
+  it('pass-through: `npm run dev` maps to a native run', async () => {
     const dir = fixture({ 'package.json': '{"name":"x"}' });
     const { code, stdout } = await runCli(dir, ['--json', 'npm', 'run', 'dev']);
     expect(code).toBe(0);
     const plan = JSON.parse(stdout);
     expect(plan.argv).toEqual(['npm', 'run', 'dev']);
-    expect(plan.interactive).toBe(true);
   });
 
-  it('auto-script: `sandbox <script>` uses packageManager-native argv', async () => {
+  it('auto-script: `screen <script>` uses packageManager-native argv', async () => {
     const dir = fixture({
       'package.json': JSON.stringify({
         name: 'x',
@@ -606,7 +475,6 @@ describe('cli (golden, no docker)', () => {
     expect(code).toBe(0);
     const plan = JSON.parse(stdout);
     expect(plan.argv).toEqual(['pnpm', 'test']);
-    expect(plan.interactive).toBe(true);
   });
 
   it('auto-script: npm inserts `--` before forwarded script args', async () => {
@@ -623,7 +491,7 @@ describe('cli (golden, no docker)', () => {
     expect(plan.argv).toEqual(['npm', 'run', 'lint', '--', '--fix']);
   });
 
-  it('`sandbox dev` falls back to start/serve and still uses native argv', async () => {
+  it('`screen dev` falls back to start/serve and still uses native argv', async () => {
     const dir = fixture({
       'package.json': JSON.stringify({
         name: 'x',
@@ -635,25 +503,9 @@ describe('cli (golden, no docker)', () => {
     expect(code).toBe(0);
     const plan = JSON.parse(stdout);
     expect(plan.argv).toEqual(['pnpm', 'start', '--', '--host']);
-    expect(plan.network).toBe('on');
-    expect(plan.env.HOST).toBe('0.0.0.0');
   });
 
-  it('builtin commands keep precedence over script fallback for best-effort predictability', async () => {
-    const dir = fixture({
-      'package.json': JSON.stringify({
-        name: 'x',
-        packageManager: 'pnpm@11.5.1',
-        scripts: { build: 'vite build' },
-      }),
-    });
-    const { code, stdout } = await runCli(dir, ['--json', 'build']);
-    expect(code).toBe(0);
-    expect(stdout).toContain('"tag"');
-    expect(stdout).not.toContain('vite build');
-  });
-
-  it('`sandbox script <name>` runs a colliding package.json script natively', async () => {
+  it('`screen script <name>` runs a colliding package.json script natively', async () => {
     const dir = fixture({
       'package.json': JSON.stringify({
         name: 'x',
@@ -667,23 +519,11 @@ describe('cli (golden, no docker)', () => {
     expect(plan.argv).toEqual(['pnpm', 'build', '--watch']);
   });
 
-  it('`sandbox dev` opens dev-mode networking through the single effective config', async () => {
-    const dir = fixture({
-      'package.json': JSON.stringify({ name: 'x', packageManager: 'pnpm@11.5.1', scripts: { dev: 'vite' } }),
-    });
-    const { code, stdout } = await runCli(dir, ['--json', 'dev']);
-    expect(code).toBe(0);
-    const plan = JSON.parse(stdout);
-    expect(plan.argv).toEqual(['pnpm', 'dev']);
-    expect(plan.network).toBe('on'); // same as the `--dev` global one-off mode
-    expect(plan.env.HOST).toBe('0.0.0.0');
-  });
-
   it('preflight resolves package.json scripts too (run route → nothing to install → clean exit)', async () => {
     const dir = fixture({
       'package.json': JSON.stringify({ name: 'x', packageManager: 'pnpm@11.5.1', scripts: { test: 'vitest' } }),
     });
-    // `sandbox test` is a script, not a pm command — preflight used to reject it as "unknown".
+    // `screen test` is a script, not a pm command — preflight used to reject it as "unknown".
     const { code } = await runCli(dir, ['--min-release-age', '7', 'preflight', 'test']);
     expect(code).toBe(0);
   });
@@ -702,11 +542,8 @@ describe('cli (golden, no docker)', () => {
     const dir = fixture({ 'package-lock.json': '{}', 'package.json': '{"name":"x"}' });
     const { code, stdout } = await runCli(dir, ['--json', 'npm', 'audit', 'fix', '--package-lock-only']);
     expect(code).toBe(0);
-    const plan = JSON.parse(stdout.replaceAll(dir, '<cwd>'));
+    const plan = JSON.parse(stdout);
     expect(plan.argv).toEqual(['npm', 'audit', 'fix', '--package-lock-only']);
-    expect(plan.network).toBe('allowlist');
-    expect(plan.workdir).toBe('/workspace');
-    expect(plan.mounts.find((m: { target: string }) => m.target === '/workspace/package.json')).toBeUndefined();
   });
 
   it('pass-through: `pnpm audit --fix=update` honours the named pm and stays install-class', async () => {
@@ -715,39 +552,6 @@ describe('cli (golden, no docker)', () => {
     expect(code).toBe(0);
     const plan = JSON.parse(stdout);
     expect(plan.argv).toEqual(['corepack', 'pnpm', 'audit', '--fix=update', '--prod']);
-    expect(plan.network).toBe('allowlist');
-    expect(plan.interactive).toBe(false);
-  });
-
-  it('pass-through: `npm audit` uses registry egress but keeps the whole tree read-only', async () => {
-    const dir = fixture({ 'package-lock.json': '{}', 'package.json': '{"name":"x"}' });
-    const { code, stdout } = await runCli(dir, ['--json', 'npm', 'audit', '--json']);
-    expect(code).toBe(0);
-    const plan = JSON.parse(stdout.replaceAll(dir, '<cwd>'));
-    expect(plan.argv).toEqual(['npm', 'audit', '--json']);
-    expect(plan.network).toBe('allowlist');
-    expect(plan.mounts).toContainEqual({ type: 'bind', source: '<cwd>', target: '/workspace', readonly: true });
-  });
-
-  it('pass-through: `npm audit signatures` uses registry egress with protected persistence mounts', async () => {
-    const dir = fixture({ 'package-lock.json': '{}', 'package.json': '{"name":"x"}' });
-    const { code, stdout } = await runCli(dir, ['--json', 'npm', 'audit', 'signatures', '--json']);
-    expect(code).toBe(0);
-    const plan = JSON.parse(stdout.replaceAll(dir, '<cwd>'));
-    expect(plan.argv).toEqual(['npm', 'audit', 'signatures', '--json']);
-    expect(plan.network).toBe('allowlist');
-    expect(plan.mounts).toContainEqual({ type: 'bind', source: '<cwd>', target: '/workspace', readonly: true });
-  });
-
-  it('pass-through: `pnpm audit signatures` honours the named pm and stays read-only to the manifest', async () => {
-    const dir = fixture({ 'pnpm-lock.yaml': '', 'package.json': '{"name":"x"}' });
-    const { code, stdout } = await runCli(dir, ['--json', 'pnpm', 'audit', 'signatures']);
-    expect(code).toBe(0);
-    const plan = JSON.parse(stdout);
-    expect(plan.argv).toEqual(['corepack', 'pnpm', 'audit', 'signatures']);
-    expect(plan.network).toBe('allowlist');
-    expect(plan.mounts.find((m: { target: string }) => m.target === '/workspace')).toMatchObject({ readonly: true });
-    expect(plan.interactive).toBe(false);
   });
 
   it('audit-fix preflight gates the incoming vulnerable direct dependency versions before running', async () => {
@@ -756,7 +560,7 @@ describe('cli (golden, no docker)', () => {
       'package-lock.json': JSON.stringify({ lockfileVersion: 3, packages: { '': { dependencies: { 'old-lib': '^2.0.0' } }, 'node_modules/old-lib': { version: '2.0.0' } } }),
     });
     await withRegistry(deprecatedRegistry, async (url) => {
-      const { code, stderr } = await runCli(dir, ['npm', 'audit', 'fix'], { SANDBOX_NPM_REGISTRY: url });
+      const { code, stderr } = await runCli(dir, ['npm', 'audit', 'fix'], { SCREEN_NPM_REGISTRY: url });
       expect(code).toBe(1);
       expect(stderr).toContain('old-lib@2.0.0, deprecated: no longer maintained');
     });
@@ -767,7 +571,7 @@ describe('cli (golden, no docker)', () => {
     const first = await runCli(dir, ['init', '--preset', 'strict']);
     expect(first.code).toBe(0);
     expect(first.stdout).toContain('screen: wrote screen.config.json using the strict preset');
-    expect(first.stdout).toContain('screen install'); // beginner write path in Next commands (not `sandbox npm install`)
+    expect(first.stdout).toContain('screen install'); // beginner write path in Next commands (not `screen npm install`)
     const cfg = JSON.parse(readFileSync(path.join(dir, 'screen.config.json'), 'utf8'));
     expect(cfg.install).toEqual({
       network: 'allowlist',
@@ -798,7 +602,7 @@ describe('cli (golden, no docker)', () => {
 
   it('first-run init prints the project mode and demotes the per-PM binaries to an advanced tip', async () => {
     // Golden transcript for first contact: a fresh project surfaces its mode (no deps yet), points at
-    // the beginner write path, and frames sandbox-<pm>/s<pm> as an advanced shortcut, not the default.
+    // the beginner write path, and frames screen-<pm>/s<pm> as an advanced shortcut, not the default.
     const dir = fixture({});
     const { code, stdout } = await runCli(dir, ['init', '--preset', 'balanced']);
     expect(code).toBe(0);
@@ -807,27 +611,21 @@ describe('cli (golden, no docker)', () => {
     expect(stdout).toContain('screen install'); // the beginner write path is still front-and-centre
   });
 
-  it('init --agent writes repo instructions and wires the enforcement hook', async () => {
+  it('init --agent writes repo instructions for AI agents', async () => {
     const dir = fixture({});
     const { code, stdout } = await runCli(dir, ['init', '--agent']);
     expect(code).toBe(0);
-    expect(stdout).toContain('screen: wrote .sandbox/AGENT.md');
-    expect(stdout).toContain('wired .claude/settings.json');
-    expect(readFileSync(path.join(dir, '.sandbox', 'AGENT.md'), 'utf8')).toContain('Use `screen install`, not `npm install`');
-    expect(readFileSync(path.join(dir, '.sandbox', 'hooks', 'enforce-sandbox.mjs'), 'utf8')).toContain('Blocked by sandbox');
-    expect(JSON.parse(readFileSync(path.join(dir, '.claude', 'settings.json'), 'utf8')).hooks.PreToolUse[0].hooks[0].command).toContain('enforce-sandbox.mjs');
+    expect(stdout).toContain('screen: wrote .screen/AGENT.md');
+    expect(readFileSync(path.join(dir, '.screen', 'AGENT.md'), 'utf8')).toContain('Use `screen install`, not `npm install`');
   });
 
-  it('setup --vibe writes config, checks the backend, builds images, and prints next commands', async () => {
+  it('setup --vibe writes config and prints next commands', async () => {
     const dir = fixture({});
-    const fakePath = fakeDocker(dir);
-    const { code, stdout } = await runCli(dir, ['setup', '--vibe'], { PATH: `${fakePath}:${process.env.PATH ?? ''}` });
+    const { code, stdout } = await runCli(dir, ['setup', '--vibe']);
     expect(code).toBe(0);
     expect(stdout).toContain('screen: wrote screen.config.json using the vibe preset');
-    expect(stdout).toContain('screen: backend ready: Docker version 27.0.0');
-    expect(stdout).toContain('screen: building node-install-sandbox:latest and the egress proxy image');
     expect(stdout).toContain('screen: vibe preset');
-    expect(stdout).toContain('screen install'); // beginner write path in Next commands (not `sandbox npm install`)
+    expect(stdout).toContain('screen install'); // beginner write path in Next commands
     expect(stdout).toContain('screen dev');
     expect(existsSync(path.join(dir, 'screen.config.json'))).toBe(true);
   });
@@ -845,27 +643,6 @@ describe('cli (golden, no docker)', () => {
     const { code, stderr } = await runCli(fixture({}), ['init', '--preset', 'nope']);
     expect(code).toBe(1);
     expect(stderr).toMatch(/unknown preset/);
-  });
-
-  it('doctor reports a missing backend clearly', async () => {
-    const { code, stdout } = await runCli(fixture({}), ['doctor'], { PATH: '' });
-    expect(code).toBe(1);
-    expect(stdout).toContain('[info] config:');
-    expect(stdout).toContain('[info] package manager:');
-    expect(stdout).toContain('[fail] backend:');
-    expect(stdout).toContain('fix:');
-  });
-
-  it('doctor reports workspace root and package workdir from a monorepo package', async () => {
-    const dir = fixture({
-      'pnpm-workspace.yaml': 'packages:\n  - apps/*\n',
-      'screen.config.json': '{}',
-      'apps/web/package.json': '{"name":"web"}',
-    });
-    const { code, stdout } = await runCli(path.join(dir, 'apps', 'web'), ['doctor'], { PATH: '' });
-    expect(code).toBe(1);
-    expect(stdout).toContain(`[info] workspace root: ${dir}`);
-    expect(stdout).toContain('[info] package workdir: /workspace/apps/web');
   });
 
   it('doctor suggests private registry allowlist and auth grants from .npmrc', async () => {
@@ -916,7 +693,7 @@ describe('cli (golden, no docker)', () => {
     it('signs a clean repo and the receipt records the checks it attests', async () => {
       const dir = fixture({ 'screen.config.json': GREEN });
       const proj = fixture({ 'screen.config.json': GREEN }); // separate dir to scan (no key file inside)
-      const { code, stdout } = await runCli(proj, ['verify', '--sign', '--secrets'], { SANDBOX_SIGNING_KEY: await keyFile(dir) });
+      const { code, stdout } = await runCli(proj, ['verify', '--sign', '--secrets'], { SCREEN_SIGNING_KEY: await keyFile(dir) });
       expect(code).toBe(0);
       const receipt = JSON.parse(stdout) as { alg: string; payload: { checks: string[] } };
       expect(receipt.alg).toBe('ed25519');
@@ -929,7 +706,7 @@ describe('cli (golden, no docker)', () => {
         '.env': 'OPENAI_API_KEY=sk-' + 'z'.repeat(40) + '\n',
       });
       const keyDir = fixture({});
-      const { code, stdout, stderr } = await runCli(proj, ['verify', '--sign', '--secrets'], { SANDBOX_SIGNING_KEY: await keyFile(keyDir) });
+      const { code, stdout, stderr } = await runCli(proj, ['verify', '--sign', '--secrets'], { SCREEN_SIGNING_KEY: await keyFile(keyDir) });
       expect(code).toBe(1);
       expect(stdout.trim()).toBe(''); // critically: NO signed "green" receipt was emitted
       expect(stderr).toMatch(/not signing/);

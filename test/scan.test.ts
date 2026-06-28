@@ -58,7 +58,7 @@ describe('runScan', () => {
   it('flags an installed package that matches the local blocklist (independent of OSV)', async () => {
     const res = await runScan({
       pm: 'npm', cwd: '/x', readLockfile: read, advisoryClient: advisoryFor({}),
-      knownBad: [{ name: 'evil', source: 'sandbox.advisories.json' }],
+      knownBad: [{ name: 'evil', source: 'screen.advisories.json' }],
     });
     expect(res.malware).toHaveLength(0);
     expect(res.knownBadHits.map((h) => h.name)).toEqual(['evil']);

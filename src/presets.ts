@@ -55,7 +55,7 @@ export const PRESETS: Record<PresetName, Preset> = {
   agent: {
     name: 'agent',
     label: 'Agent',
-    hint: 'vibe + project-scoped AI config (./.claude-sandbox); 3-day release-age gate; host credentials blocked',
+    hint: 'vibe + project-scoped AI config (./.claude-screen); 3-day release-age gate; host credentials blocked',
     // The AI-install path is higher risk (unattended `npm install`), so unlike vibe it keeps the
     // blocking release-age gate on — and plants canaries, since an unattended agent is exactly who
     // you want a credential-theft tripwire watching. Installs are registry-only, so the proxy sees them.

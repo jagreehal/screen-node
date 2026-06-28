@@ -6,7 +6,7 @@
  * explicit `screen <pm>` form, which always containerizes (the boundary on demand). Your real `pnpm` is
  * never shadowed; you opt in by typing the prefix. See docs/rfc-native-default.md for the one-mode-per-project model.
  *
- * In a published install each bin name is a tiny launcher in `bin/` that sets `SANDBOX_PM_BIN` and
+ * In a published install each bin name is a tiny launcher in `bin/` that sets `SCREEN_PM_BIN` and
  * imports the CLI, so the leader survives a package-manager shim that loses argv[0]. `leaderForBin`
  * is the fallback for running the bundle directly under a `screen-<pm>`-named symlink (dev/test).
  */

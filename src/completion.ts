@@ -14,7 +14,7 @@ export function isCompletionShell(value: string): value is CompletionShell {
  * after `screen`. Must track the command dispatch in `cli.ts main()` — `completion.test.ts` only
  * checks each entry appears in the script, so add new commands here when they land.
  */
-export const SANDBOX_COMMANDS = [
+export const SCREEN_COMMANDS = [
   'init', 'setup', 'allow', 'off', 'on', 'doctor', 'verify', 'scan', 'secrets', 'feeds', 'delta', 'check', 'preflight', 'approve-builds',
   'badge', 'completion', 'install', 'add', 'remove', 'run', 'x', 'update', 'upgrade', 'audit', 'dev', 'script', 'help', 'version',
   'npm', 'pnpm', 'yarn', 'bun', 'npx', 'bunx', 'node', 'tsx', 'turbo', 'nx',
@@ -31,7 +31,7 @@ export const GLOBAL_FLAGS = [
 export const PRESET_VALUES = ['strict', 'balanced', 'vibe', 'agent', 'trusted'] as const;
 export const RISK_VALUES = ['off', 'basic', 'thorough'] as const;
 
-const COMMANDS = SANDBOX_COMMANDS.join(' ');
+const COMMANDS = SCREEN_COMMANDS.join(' ');
 const FLAGS = GLOBAL_FLAGS.join(' ');
 
 export interface CompletionOptions {
@@ -66,7 +66,7 @@ function zsh(inline: boolean): string {
   return `${header}
 _screen() {
   local -a _screen_commands _screen_flags
-  _screen_commands=(${SANDBOX_COMMANDS.map((c) => `'${c}'`).join(' ')})
+  _screen_commands=(${SCREEN_COMMANDS.map((c) => `'${c}'`).join(' ')})
   _screen_flags=(${GLOBAL_FLAGS.map((f) => `'${f}'`).join(' ')})
   _arguments -C '1: :->command' '*:: :->args'
   case $state in

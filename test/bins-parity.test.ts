@@ -7,7 +7,7 @@ import { leaderForBin } from '../src/native.js';
  * screen-node ships only the terse `s<pm>` aliases (s = screen). Three places must
  * agree for them to work: the `bin` field in package.json (what npm installs as
  * executables), `leaderForBin`/BIN_LEADER (the from-source/dev fallback), and the
- * `bin/*.mjs` launchers (which set SANDBOX_PM_BIN for the published path). They're
+ * `bin/*.mjs` launchers (which set SCREEN_PM_BIN for the published path). They're
  * maintained by hand, so this guard fails the build if any drifts: a launcher
  * pointing at the wrong leader would otherwise silently run the wrong PM.
  */
@@ -33,8 +33,8 @@ describe('per-PM binary parity (package.json bin ↔ leaderForBin ↔ bin/ launc
       const leader = leaderForBin(name);
       expect(leader, `leaderForBin(${name})`).toBeDefined();
       const launcher = readFileSync(path.join(root, rel), 'utf8');
-      const m = launcher.match(/SANDBOX_PM_BIN\s*=\s*['"]([^'"]+)['"]/);
-      expect(m, `${rel} sets SANDBOX_PM_BIN`).not.toBeNull();
+      const m = launcher.match(/SCREEN_PM_BIN\s*=\s*['"]([^'"]+)['"]/);
+      expect(m, `${rel} sets SCREEN_PM_BIN`).not.toBeNull();
       expect(m![1], `${name} -> ${rel} leader`).toBe(leader);
     }
   });

@@ -25,7 +25,7 @@ describe('disabledByEnv', () => {
     expect(disabledByEnv({})).toBe(false);
     expect(disabledByEnv({ CI: 'true' })).toBe(true);
     expect(disabledByEnv({ NO_UPDATE_NOTIFIER: '1' })).toBe(true);
-    expect(disabledByEnv({ SANDBOX_NO_UPDATE_CHECK: '1' })).toBe(true);
+    expect(disabledByEnv({ SCREEN_NO_UPDATE_CHECK: '1' })).toBe(true);
   });
 });
 

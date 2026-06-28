@@ -3,15 +3,15 @@ import { parseRepoSlug, renderBadge, staticBadge, workflowBadge } from '../src/b
 
 describe('parseRepoSlug', () => {
   it('parses ssh, https, and bare git URLs', () => {
-    expect(parseRepoSlug('git@github.com:jagreehal/sandbox-node.git')).toBe('jagreehal/sandbox-node');
-    expect(parseRepoSlug('https://github.com/jagreehal/sandbox-node.git')).toBe('jagreehal/sandbox-node');
-    expect(parseRepoSlug('https://github.com/jagreehal/sandbox-node')).toBe('jagreehal/sandbox-node');
-    expect(parseRepoSlug('git+https://github.com/jagreehal/sandbox-node.git')).toBe('jagreehal/sandbox-node');
+    expect(parseRepoSlug('git@github.com:jagreehal/screen-node.git')).toBe('jagreehal/screen-node');
+    expect(parseRepoSlug('https://github.com/jagreehal/screen-node.git')).toBe('jagreehal/screen-node');
+    expect(parseRepoSlug('https://github.com/jagreehal/screen-node')).toBe('jagreehal/screen-node');
+    expect(parseRepoSlug('git+https://github.com/jagreehal/screen-node.git')).toBe('jagreehal/screen-node');
   });
 
   it('parses npm shorthand and owner/repo', () => {
-    expect(parseRepoSlug('github:jagreehal/sandbox-node')).toBe('jagreehal/sandbox-node');
-    expect(parseRepoSlug('jagreehal/sandbox-node')).toBe('jagreehal/sandbox-node');
+    expect(parseRepoSlug('github:jagreehal/screen-node')).toBe('jagreehal/screen-node');
+    expect(parseRepoSlug('jagreehal/screen-node')).toBe('jagreehal/screen-node');
   });
 
   it('returns undefined for non-github / unrecognised input', () => {
@@ -33,16 +33,16 @@ describe('badge rendering', () => {
   });
 
   it('workflow badge points at the CI run for evidence', () => {
-    const b = workflowBadge('me/app', 'sandbox.yml');
-    expect(b).toContain('/me/app/actions/workflows/sandbox.yml/badge.svg');
+    const b = workflowBadge('me/app', 'screen.yml');
+    expect(b).toContain('/me/app/actions/workflows/screen.yml/badge.svg');
   });
 
   it('renderBadge with --workflow but no detectable slug asks for --repo', () => {
     // A throwaway empty dir has no package.json and (likely) no git remote.
-    expect(renderBadge('/nonexistent-dir-xyz', { workflow: 'sandbox.yml' })).toMatch(/--repo/);
+    expect(renderBadge('/nonexistent-dir-xyz', { workflow: 'screen.yml' })).toMatch(/--repo/);
   });
 
   it('renderBadge honours an explicit slug', () => {
-    expect(renderBadge('/nonexistent-dir-xyz', { workflow: 'sandbox.yml', slug: 'me/app' })).toContain('/me/app/actions/');
+    expect(renderBadge('/nonexistent-dir-xyz', { workflow: 'screen.yml', slug: 'me/app' })).toContain('/me/app/actions/');
   });
 });

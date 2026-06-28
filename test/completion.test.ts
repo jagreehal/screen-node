@@ -5,7 +5,7 @@ import {
   GLOBAL_FLAGS,
   PRESET_VALUES,
   RISK_VALUES,
-  SANDBOX_COMMANDS,
+  SCREEN_COMMANDS,
 } from '../src/completion.js';
 
 describe('completionScript', () => {
@@ -17,7 +17,7 @@ describe('completionScript', () => {
 
   it('lists every sandbox subcommand so they tab-complete', () => {
     for (const shell of COMPLETION_SHELLS) {
-      for (const cmd of SANDBOX_COMMANDS) {
+      for (const cmd of SCREEN_COMMANDS) {
         expect(completionScript(shell), `${shell} → ${cmd}`).toContain(cmd);
       }
     }

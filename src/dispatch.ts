@@ -153,7 +153,7 @@ const SELF_RUNNERS = new Set(['npx', 'bunx', 'pnpx', 'dlx', 'exec', 'x']);
 
 /**
  * Don't sandbox sandbox. A wrapper or alias can route `npx` through us, so
- * `npx @jagreehal/sandbox-node check lodash` arrives as `sandbox npx @jagreehal/sandbox-node check
+ * `npx @jagreehal/screen-node check lodash` arrives as `sandbox npx @jagreehal/screen-node check
  * lodash` — which would otherwise fetch-and-run our OWN CLI inside a network-less container and die
  * with a DNS error, never reaching `check`. Detect that shape and unwrap it to the bare subcommand
  * (`check lodash`), which the already-running CLI runs directly. Returns the unwrapped argv, or

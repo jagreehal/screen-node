@@ -55,10 +55,11 @@ run natively on the host, the command and output are branded `screen`, and the
 gates are heuristics, not a boundary. See [`SECURITY.md`](SECURITY.md) for the
 honest threat model and [`AGENTS.md`](AGENTS.md) for repo orientation.
 
-Remaining follow-ups: the `test/integration/` golden tests still assert some
-removed container flags; a few `SANDBOX_*` env var names and on-disk paths
-(`sandbox.advisories.json`, the `.sandbox` agent dir) are not yet renamed; and a
-fresh command reference + usage skills need authoring for screen-node.
+The rename to `screen` is complete: env vars use the `SCREEN_*` prefix, on-disk
+paths use the `screen` name (`screen.advisories.json`, the `.screen` agent dir),
+and the `test/integration/` golden tests no longer reference removed container
+flags. Remaining follow-up: a fresh command reference + usage skills need
+authoring for screen-node.
 
 ## License
 

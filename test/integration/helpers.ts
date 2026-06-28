@@ -1,4 +1,4 @@
-import { spawn, spawnSync } from 'node:child_process';
+import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, writeFileSync, mkdirSync, realpathSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { tmpdir } from 'node:os';
@@ -66,15 +66,6 @@ export function runRepoScript(cwd: string, scriptRel: string, env: Record<string
   });
 }
 
-let dockerCache: boolean | undefined;
-/** True if a docker daemon is reachable (so Docker tests can run). */
-export function dockerAvailable(): boolean {
-  if (dockerCache === undefined) {
-    dockerCache = spawnSync('docker', ['info'], { stdio: 'ignore' }).status === 0;
-  }
-  return dockerCache;
-}
-
 /** Create a throwaway project dir seeded with `files`. */
 export function fixture(files: Record<string, string>): string {
   // realpath so it matches process.cwd() inside the CLI (macOS /var -> /private/var).
@@ -85,33 +76,4 @@ export function fixture(files: Record<string, string>): string {
     writeFileSync(full, body);
   }
   return dir;
-}
-
-/** A fixture whose dependency runs a probe at postinstall (harvest + persistence + egress). */
-export function probeFixture(config: object): string {
-  const probe = `
-const fs = require('fs'), os = require('os'), path = require('path');
-let creds = 0;
-for (const r of ['.ssh/id_ed25519', '.npmrc', '.aws/credentials']) {
-  try { fs.accessSync(path.join(os.homedir(), r)); creds++; } catch {}
-}
-let persist = false;
-try { fs.mkdirSync('/workspace/.github', { recursive: true }); fs.writeFileSync('/workspace/.github/persist.yml', 'x'); persist = true; } catch {}
-console.log('PROBE creds=' + creds + ' persist=' + (persist ? 'WROTE' : 'BLOCKED'));
-require('dns').lookup('example.com', (e) => console.log('PROBE egress=' + (e ? 'BLOCKED' : 'REACHED')));
-`;
-  return fixture({
-    'package.json': JSON.stringify({
-      name: 'probe-fixture',
-      private: true,
-      dependencies: { 'bad-dep': 'file:./bad-dep' },
-    }),
-    'screen.config.json': JSON.stringify(config),
-    'bad-dep/package.json': JSON.stringify({
-      name: 'bad-dep',
-      version: '1.0.0',
-      scripts: { postinstall: 'node probe.js' },
-    }),
-    'bad-dep/probe.js': probe,
-  });
 }

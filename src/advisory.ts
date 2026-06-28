@@ -232,7 +232,7 @@ function parseOsvVuln(v: OsvVuln): AdvisoryDetail | undefined {
 
 export function createAdvisoryClient(
   fetchImpl: typeof fetch = fetch,
-  baseUrl = process.env.SANDBOX_OSV_API ?? 'https://api.osv.dev',
+  baseUrl = process.env.SCREEN_OSV_API ?? 'https://api.osv.dev',
   timeoutMs = ADVISORY_TIMEOUT_MS,
 ): AdvisoryClient {
   const doQuery = async (name: string, version: string): Promise<AdvisoryQueryResult> => {

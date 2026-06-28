@@ -110,7 +110,7 @@ Advanced commands:
                        plus an entropy fallback for secret-ish values with no known shape.
   feeds <update|list>  manage malware FEEDS (install.malwareFeeds): \`update\` fetches + caches them so
                        the install-time blocklist check stays offline; \`list\` shows configured/cached
-                       feeds. A package on a feed (or in sandbox.advisories.json) ALWAYS blocks installs.
+                       feeds. A package on a feed (or in screen.advisories.json) ALWAYS blocks installs.
   upgrade [--write]    move declared dependency RANGES to newer versions (npm-check-updates),
                        NOT just within the range (that's \`screen npm update\`). Your release-age
                        gate drives ncu's --cooldown automatically, the proposed versions go through
@@ -123,15 +123,15 @@ Advanced commands:
                        "boundary intact AND no installed dep is currently flagged as malware");
                        --secrets also fails if a credential is committed in the repo;
                        --sign emits an Ed25519-signed receipt of the green boundary to stdout
-                       (needs SANDBOX_SIGNING_KEY → a key file from \`screen keygen\`)
+                       (needs SCREEN_SIGNING_KEY → a key file from \`screen keygen\`)
   verify-receipt <f>   verify a signed receipt from \`verify --sign\`; --fingerprint <hex> (or
-                       SANDBOX_TRUSTED_KEY) pins the signer so any other key is rejected
+                       SCREEN_TRUSTED_KEY) pins the signer so any other key is rejected
   keygen               generate an Ed25519 signing keypair: private key → CI secret
-                       (SANDBOX_SIGNING_KEY), fingerprint → pin via SANDBOX_TRUSTED_KEY
+                       (SCREEN_SIGNING_KEY), fingerprint → pin via SCREEN_TRUSTED_KEY
   audit verify <log>   verify the hash-chained audit log is intact (no entry altered or removed).
-                       Set SANDBOX_AUDIT_LOG=<path> on any run to append tamper-evident events
+                       Set SCREEN_AUDIT_LOG=<path> on any run to append tamper-evident events
   badge [--workflow F] print a markdown "screened" badge. Bare = static provenance badge;
-                       --workflow sandbox.yml = the CI-backed verified badge (--repo to override)
+                       --workflow screen.yml = the CI-backed verified badge (--repo to override)
 
 Pass-through and expert commands:
   install [pm-args]    vet, then install deps natively with the detected package manager.
@@ -187,8 +187,8 @@ no screening. For a trusted repo, set "off": true in screen.config.json (whole t
 screen.config.local.json (just you). Screen-only commands (check, doctor, init, verify, …) keep
 working either way.
 
-Logging: human lines on stderr by default; set SANDBOX_LOG=json for NDJSON,
-SANDBOX_LOG_LEVEL=debug|info|warn|error to filter.
+Logging: human lines on stderr by default; set SCREEN_LOG=json for NDJSON,
+SCREEN_LOG_LEVEL=debug|info|warn|error to filter.
 `;
 
 /** Parse global flags that appear BEFORE the command (so they never clash with `run --`). */
@@ -694,7 +694,7 @@ async function runScanCommand(globals: Globals, pm: PackageManager, cwd: string)
   // Triaged advisories
   if (result.triaged.length) {
     const triagedNames = [...new Set(result.triaged.map((h) => h.name))].sort();
-    log.info(`scan: ${result.triaged.length} advisory hit(s) triaged via .sandbox-audit-ignore (${triagedNames.join(', ')})`);
+    log.info(`scan: ${result.triaged.length} advisory hit(s) triaged via .screen-audit-ignore (${triagedNames.join(', ')})`);
   }
 
   // Advisory details
@@ -1254,12 +1254,12 @@ async function main(): Promise<number> {
   const rawArgv = process.argv.slice(2);
   const selfArgv = unwrapSelfInvocation(rawArgv);
   // Multi-call binary: `sandbox-pnpm add zod` (or `spnpm add zod`) is THIS bundle fronting a package
-  // manager. The bin/ launcher sets SANDBOX_PM_BIN to the leader (a PM shim can re-exec us and lose
+  // manager. The bin/ launcher sets SCREEN_PM_BIN to the leader (a PM shim can re-exec us and lose
   // argv[0], so the bin name alone isn't reliable); `leaderForBin` is the fallback for running the
   // bundle directly under a `sandbox-<pm>`-named symlink. The leader (pnpm) is implicit, so parse the
   // args normally and fold the parsed command back in as the PM's first argument, which keeps global
   // flags working. A `sandbox-<pm>` run always containerizes, exactly like `sandbox <pm>`.
-  const binLeader = process.env.SANDBOX_PM_BIN ?? leaderForBin(path.basename(process.argv[1] ?? ''));
+  const binLeader = process.env.SCREEN_PM_BIN ?? leaderForBin(path.basename(process.argv[1] ?? ''));
   const parsed = parse(selfArgv ?? rawArgv);
   const globals = parsed.globals;
   const { cmd, args } = foldBinLeader(binLeader, parsed);
@@ -1347,8 +1347,8 @@ async function main(): Promise<number> {
       log.error('verify --sign: not signing, a check above failed; fix it before requesting a receipt');
       return code;
     }
-    const keyFile = process.env.SANDBOX_SIGNING_KEY;
-    if (!keyFile) fail('verify --sign needs a signing key: generate one with `screen keygen`, then set SANDBOX_SIGNING_KEY to the private-key file');
+    const keyFile = process.env.SCREEN_SIGNING_KEY;
+    if (!keyFile) fail('verify --sign needs a signing key: generate one with `screen keygen`, then set SCREEN_SIGNING_KEY to the private-key file');
     const receipt = signVerifyReceipt(context.rootDir, readSigningKey(keyFile), { configPath: context.configPath, now: new Date(), checks });
     if (!receipt) return runVerify(context.rootDir, context.configPath); // boundary regressed since the check above (shouldn't happen)
     console.log(JSON.stringify(receipt, null, 2));
@@ -1359,7 +1359,7 @@ async function main(): Promise<number> {
     const file = args.find((a) => !a.startsWith('-'));
     if (!file) fail('usage: screen verify-receipt <file.json> [--fingerprint <hex>]');
     const fpIdx = args.indexOf('--fingerprint');
-    const trustedFingerprint = (fpIdx >= 0 ? args[fpIdx + 1] : undefined) ?? process.env.SANDBOX_TRUSTED_KEY;
+    const trustedFingerprint = (fpIdx >= 0 ? args[fpIdx + 1] : undefined) ?? process.env.SCREEN_TRUSTED_KEY;
     return runVerifyReceipt(path.resolve(invocationCwd, file), { trustedFingerprint, json: globals.json });
   }
 
@@ -1369,9 +1369,9 @@ async function main(): Promise<number> {
 
   if (cmd === 'audit') {
     const sub = args[0];
-    if (sub !== 'verify') fail('usage: screen audit verify <log.jsonl>  (the hash-chained audit log; set SANDBOX_AUDIT_LOG to write one)');
-    const file = args.slice(1).find((a) => !a.startsWith('-')) ?? process.env.SANDBOX_AUDIT_LOG;
-    if (!file) fail('usage: screen audit verify <log.jsonl>  (or set SANDBOX_AUDIT_LOG)');
+    if (sub !== 'verify') fail('usage: screen audit verify <log.jsonl>  (the hash-chained audit log; set SCREEN_AUDIT_LOG to write one)');
+    const file = args.slice(1).find((a) => !a.startsWith('-')) ?? process.env.SCREEN_AUDIT_LOG;
+    if (!file) fail('usage: screen audit verify <log.jsonl>  (or set SCREEN_AUDIT_LOG)');
     return runAuditVerify(path.resolve(invocationCwd, file), { json: globals.json });
   }
 
@@ -1482,7 +1482,7 @@ async function main(): Promise<number> {
 
   if (cmd === 'upgrade') {
     // On --write, install the rewritten package.json through the same mode-aware write path as
-    // `sandbox install` (native on a host-native or fresh project, contained when the tree already is).
+    // `screen install` (native on a host-native or fresh project, contained when the tree already is).
     const runInstall = () => runWrite(writeCtx, { model: 'install', pm: facts.pm, frozen: false, args: [] });
     return runUpgradeCommand(globals, config, facts, args, runInstall);
   }

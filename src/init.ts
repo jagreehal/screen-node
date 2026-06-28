@@ -36,7 +36,7 @@ export interface InitOptions {
   force?: boolean;
 }
 
-const AGENT_DIR = '.sandbox';
+const AGENT_DIR = '.screen';
 const AGENT_FILE = 'AGENT.md';
 const AGENT_BODY = `When working in this repo:
 
@@ -190,7 +190,7 @@ export async function runInit(cwd: string, opts: InitOptions = {}): Promise<numb
     message: 'Claude config inside the container?',
     options: [
       { value: 'none', label: 'None' },
-      { value: 'project', label: 'Project (./.claude-sandbox)' },
+      { value: 'project', label: 'Project (./.claude-screen)' },
       { value: 'home', label: 'Home (~/.claude), leaky' },
     ],
     initialValue: config.grants.claude,

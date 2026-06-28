@@ -54,13 +54,13 @@ export interface ScanContext {
   onProgress?: (done: number, total: number) => void;
   /** Direct dependency names (for direct/transitive tagging). Auto-detected if omitted. */
   directNames?: Set<string>;
-  /** Triage entries from `.sandbox-audit-ignore` (auto-read if omitted). */
+  /** Triage entries from `.screen-audit-ignore` (auto-read if omitted). */
   auditIgnore?: AuditIgnoreEntry[];
 }
 
-const AUDIT_IGNORE_FILE = '.sandbox-audit-ignore';
+const AUDIT_IGNORE_FILE = '.screen-audit-ignore';
 
-/** Parse `.sandbox-audit-ignore`: `<package> [<advisory-id>] [-- <reason>]`, one per line. */
+/** Parse `.screen-audit-ignore`: `<package> [<advisory-id>] [-- <reason>]`, one per line. */
 export function readAuditIgnore(cwd: string): AuditIgnoreEntry[] {
   const file = path.join(cwd, AUDIT_IGNORE_FILE);
   if (!existsSync(file)) return [];

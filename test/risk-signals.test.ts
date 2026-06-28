@@ -230,7 +230,7 @@ describe('expired-domain signal (DNS)', () => {
 });
 
 describe('defaultNsResolver', () => {
-  const KEY = 'SANDBOX_DNS_SERVERS';
+  const KEY = 'SCREEN_DNS_SERVERS';
   const original = process.env[KEY];
   afterEach(() => {
     if (original === undefined) delete process.env[KEY];
@@ -244,7 +244,7 @@ describe('defaultNsResolver', () => {
     expect(servers).not.toEqual(['1.1.1.1', '8.8.8.8']);
   });
 
-  it('honours SANDBOX_DNS_SERVERS override', () => {
+  it('honours SCREEN_DNS_SERVERS override', () => {
     process.env[KEY] = '9.9.9.9, 149.112.112.112';
     const servers = defaultNsResolver(1000).getServers();
     expect(servers.some((s) => s.startsWith('9.9.9.9'))).toBe(true);

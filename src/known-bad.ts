@@ -8,7 +8,7 @@ import { stripJsonComments } from './config.js';
  * Known-bad packages from sources the team controls, complementing OSV's "known bad" axis without
  * its publish lag. Two source kinds, one matcher:
  *
- *   1. Advisory files — committed `sandbox.advisories.json` (team policy) and a per-user global one.
+ *   1. Advisory files — committed `screen.advisories.json` (team policy) and a per-user global one.
  *      A team can block a package the moment they know, before OSV publishes a `MAL-` id.
  *   2. Malware feeds — URLs (e.g. Aikido's public database) fetched by `sandbox feeds update` and
  *      cached locally, so the install-time check stays offline and fast.
@@ -40,22 +40,22 @@ export interface KnownBadHit {
 }
 
 /** The committed, team-shared advisory file (drop it in the repo root — no config needed). */
-export const PROJECT_ADVISORY_NAME = 'sandbox.advisories.json';
+export const PROJECT_ADVISORY_NAME = 'screen.advisories.json';
 
 export function projectAdvisoryPath(cwd: string): string {
   return path.join(cwd, PROJECT_ADVISORY_NAME);
 }
 
-/** Per-user global advisories: `$XDG_CONFIG_HOME/sandbox-node/advisories.json` (machine-wide). */
+/** Per-user global advisories: `$XDG_CONFIG_HOME/screen-node/advisories.json` (machine-wide). */
 export function userAdvisoryPath(): string {
   const base = process.env.XDG_CONFIG_HOME || path.join(homedir(), '.config');
-  return path.join(base, 'sandbox-node', 'advisories.json');
+  return path.join(base, 'screen-node', 'advisories.json');
 }
 
-/** Where `sandbox feeds update` caches fetched feeds: `$XDG_CACHE_HOME/sandbox-node/feeds/`. */
+/** Where `sandbox feeds update` caches fetched feeds: `$XDG_CACHE_HOME/screen-node/feeds/`. */
 export function feedCacheDir(): string {
   const base = process.env.XDG_CACHE_HOME || path.join(homedir(), '.cache');
-  return path.join(base, 'sandbox-node', 'feeds');
+  return path.join(base, 'screen-node', 'feeds');
 }
 
 function asSeverity(v: unknown): Severity | undefined {

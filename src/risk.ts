@@ -222,7 +222,7 @@ function parseDate(value: string | undefined): Date | undefined {
  */
 export const REGISTRY_TIMEOUT_MS = 5000;
 
-export function createRegistryClient(fetchImpl: typeof fetch = fetch, baseUrl = process.env.SANDBOX_NPM_REGISTRY ?? 'https://registry.npmjs.org', timeoutMs = REGISTRY_TIMEOUT_MS): RegistryClient {
+export function createRegistryClient(fetchImpl: typeof fetch = fetch, baseUrl = process.env.SCREEN_NPM_REGISTRY ?? 'https://registry.npmjs.org', timeoutMs = REGISTRY_TIMEOUT_MS): RegistryClient {
   return {
     async getPackument(name: string): Promise<Packument> {
       const encoded = encodeURIComponent(name).replace(/^%40/, '@');
@@ -772,12 +772,12 @@ export interface NsResolver {
  * NS resolver with a hard per-lookup timeout (so a slow resolver can't stall preflight). Defaults
  * to the host's configured DNS servers, it respects split-horizon / corporate DNS and doesn't route
  * maintainer-domain queries through fixed public resolvers (which would leak that you ran the check
- * to an attacker-chosen authoritative server). Set `SANDBOX_DNS_SERVERS` (comma-separated IPs) to
+ * to an attacker-chosen authoritative server). Set `SCREEN_DNS_SERVERS` (comma-separated IPs) to
  * override; an invalid override falls back to the system resolver rather than disabling the signal.
  */
 export function defaultNsResolver(timeoutMs: number): Resolver {
   const resolver = new Resolver({ timeout: timeoutMs, tries: 1 });
-  const override = process.env.SANDBOX_DNS_SERVERS?.split(',').map((s) => s.trim()).filter(Boolean);
+  const override = process.env.SCREEN_DNS_SERVERS?.split(',').map((s) => s.trim()).filter(Boolean);
   if (override?.length) {
     try {
       resolver.setServers(override);

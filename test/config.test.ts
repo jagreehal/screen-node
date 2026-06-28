@@ -83,7 +83,7 @@ describe('readConfig', () => {
 });
 
 describe('loadConfig layering', () => {
-  // Isolate the user-global layer ($XDG_CONFIG_HOME/sandbox-node/config.json) so a real
+  // Isolate the user-global layer ($XDG_CONFIG_HOME/screen-node/config.json) so a real
   // file on the test machine can't leak into these assertions.
   let savedXdg: string | undefined;
   beforeAll(() => {

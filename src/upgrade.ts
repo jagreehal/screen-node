@@ -36,7 +36,7 @@ const DEP_FIELDS = ['dependencies', 'devDependencies', 'optionalDependencies', '
  * The ncu version the host runs, pinned so a supply-chain tool never shells out to a floating
  * `latest`. Overridable for users who must run a different line. Bumping this is a deliberate edit.
  */
-export const NCU_SPEC = process.env.SANDBOX_NCU_SPEC || 'npm-check-updates@22';
+export const NCU_SPEC = process.env.SCREEN_NCU_SPEC || 'npm-check-updates@22';
 
 /**
  * Build the ncu argv (without the runner prefix). ncu is used for DISCOVERY only — always a

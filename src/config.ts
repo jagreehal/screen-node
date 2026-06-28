@@ -125,7 +125,7 @@ export const SandboxConfigSchema = z
   .strict();
 
 export type SandboxConfig = z.infer<typeof SandboxConfigSchema>;
-export const SANDBOX_SCHEMA_REF = './node_modules/@jagreehal/screen-node/screen.schema.json';
+export const SCREEN_SCHEMA_REF = './node_modules/@jagreehal/screen-node/screen.schema.json';
 
 /**
  * Strip JSONC comments (`// line` and `/* block *​/`) while preserving any `//`
@@ -228,10 +228,10 @@ function readRaw(file: string): Record<string, unknown> | undefined {
   return clean;
 }
 
-/** The per-user global config: `$XDG_CONFIG_HOME/sandbox-node/config.json` (or `~/.config/…`). */
+/** The per-user global config: `$XDG_CONFIG_HOME/screen-node/config.json` (or `~/.config/…`). */
 export function userConfigPath(): string {
   const base = process.env.XDG_CONFIG_HOME || path.join(homedir(), '.config');
-  return path.join(base, 'sandbox-node', 'config.json');
+  return path.join(base, 'screen-node', 'config.json');
 }
 
 /** Filename of the personal, git-ignored override that sits beside a project config. */
@@ -308,7 +308,7 @@ function boundaryLooseningWarnings(eff: SandboxConfig, base: SandboxConfig): str
 /**
  * Load `screen.config.json` and its override layers, lowest precedence first:
  *
- *   1. user-global  `$XDG_CONFIG_HOME/sandbox-node/config.json`  (personal, cross-project)
+ *   1. user-global  `$XDG_CONFIG_HOME/screen-node/config.json`  (personal, cross-project)
  *   2. project/team `screen.config.json`                        (committed, reviewed)
  *   3. local        `screen.config.local.json`                  (personal, git-ignored)
  *
@@ -363,6 +363,6 @@ export function readCommittedConfig(cwd: string, configPath?: string): SandboxCo
 
 /** Write a normalized config file with the shipped JSON Schema ref. */
 export function writeConfig(file: string, config: SandboxConfig): string {
-  writeFileSync(file, `${JSON.stringify({ $schema: SANDBOX_SCHEMA_REF, ...config }, null, 2)}\n`);
+  writeFileSync(file, `${JSON.stringify({ $schema: SCREEN_SCHEMA_REF, ...config }, null, 2)}\n`);
   return file;
 }

@@ -19,7 +19,7 @@ import { fileURLToPath } from 'node:url';
 // bloated list of obscure names only adds edit-distance-2 false positives. CORE is always kept;
 // the rest fills from the most-popular search hits.
 const COUNT = Number(process.argv[2] ?? 2500);
-const REGISTRY = process.env.SANDBOX_NPM_REGISTRY ?? 'https://registry.npmjs.org';
+const REGISTRY = process.env.SCREEN_NPM_REGISTRY ?? 'https://registry.npmjs.org';
 const PAGE = 250; // API max for size (and from + size must be <= 250)
 
 const LETTERS = 'abcdefghijklmnopqrstuvwxyz0123456789'.split('');

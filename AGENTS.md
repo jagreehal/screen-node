@@ -57,7 +57,7 @@ pnpm dev -- <args># tsx src/cli.ts <args> (run the CLI from source)
   `Route['model']` have no `default`, so adding a member makes `tsc` enumerate every
   site. Use `pnpm typecheck` as the checklist.
 - **Logging goes through `src/log.ts`** — `screen:`-prefixed lines to stderr (stdout
-  stays clean for `--json`). `SANDBOX_LOG=json` switches to NDJSON.
+  stays clean for `--json`). `SCREEN_LOG=json` switches to NDJSON.
 - **Comments explain WHY.** Match the comment-dense, rationale-first style.
 - **No em dashes in user-facing text.** Periods, commas, colons, parentheses instead.
 
@@ -76,10 +76,10 @@ pnpm dev -- <args># tsx src/cli.ts <args> (run the CLI from source)
 ## History and follow-ups
 
 `screen-node` was extracted from `@jagreehal/sandbox-node` and had its Docker/container
-subsystem removed (it is now container-free). Known follow-ups: `test/integration/`
-golden tests still assert some removed container flags and need updating; a few
-`SANDBOX_*` env var names (e.g. `SANDBOX_LOG`) and on-disk paths
-(`sandbox.advisories.json`, the `.sandbox` agent dir) were left unrenamed.
+subsystem removed (it is now container-free). The rename to `screen` is complete:
+env vars use the `SCREEN_*` prefix (e.g. `SCREEN_LOG`), on-disk paths use the `screen`
+name (`screen.advisories.json`, the `.screen` agent dir), and the `test/integration/`
+golden tests no longer reference removed container flags.
 
 ## Releasing
 

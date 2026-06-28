@@ -1,5 +1,5 @@
 // Tiny zero-dep structured logger. Human lines by default (to stderr), NDJSON when
-// SANDBOX_LOG=json — so CI/GUI wrappers can consume events the same way they consume
+// SCREEN_LOG=json — so CI/GUI wrappers can consume events the same way they consume
 // the serializable RunPlan. Not pino: this is a short-lived CLI, not a server.
 export type LogLevel = 'debug' | 'info' | 'warn' | 'error';
 export type LogFields = Record<string, unknown>;
@@ -48,13 +48,13 @@ export interface LoggerOptions {
 }
 
 function envLevel(): LogLevel {
-  const raw = process.env.SANDBOX_LOG_LEVEL as LogLevel | undefined;
+  const raw = process.env.SCREEN_LOG_LEVEL as LogLevel | undefined;
   if (raw && raw in ORDER) return raw;
-  return process.env.SANDBOX_DEBUG ? 'debug' : 'info';
+  return process.env.SCREEN_DEBUG ? 'debug' : 'info';
 }
 
 export function createLogger(opts: LoggerOptions = {}): Logger {
-  const json = opts.json ?? process.env.SANDBOX_LOG === 'json';
+  const json = opts.json ?? process.env.SCREEN_LOG === 'json';
   const min = ORDER[opts.level ?? envLevel()];
   const sink = opts.sink ?? ((line: string) => process.stderr.write(`${line}\n`));
   const emit = (level: LogLevel) => (msg: string, fields?: LogFields) => {

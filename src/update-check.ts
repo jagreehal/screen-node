@@ -25,7 +25,7 @@ interface CacheState {
 
 function cacheDir(): string {
   const base = process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache');
-  return path.join(base, 'sandbox-node');
+  return path.join(base, 'screen-node');
 }
 
 function cacheFile(): string {
@@ -69,7 +69,7 @@ export function isNewerVersion(latest: string, current: string): boolean {
 
 /** Env-level kill switches, honoured everywhere (CI, the common NO_UPDATE_NOTIFIER, and our own). */
 export function disabledByEnv(env: NodeJS.ProcessEnv = process.env): boolean {
-  return Boolean(env.NO_UPDATE_NOTIFIER || env.CI || env.SANDBOX_NO_UPDATE_CHECK);
+  return Boolean(env.NO_UPDATE_NOTIFIER || env.CI || env.SCREEN_NO_UPDATE_CHECK);
 }
 
 /** The boxed notice, or undefined when the cached `latest` is not newer than what's running. */
@@ -89,7 +89,7 @@ export function updateBanner(current: string, cache: CacheState = readCache()): 
 
 /**
  * Refresh the cache from the registry. Reuses {@link createRegistryClient} (same timeout +
- * `SANDBOX_NPM_REGISTRY` override as every other lookup), and swallows every failure — an offline
+ * `SCREEN_NPM_REGISTRY` override as every other lookup), and swallows every failure — an offline
  * or rate-limited registry must never surface here. Runs in the detached child, not the main CLI.
  */
 export async function refreshUpdateCache(client = createRegistryClient(), now: number = Date.now()): Promise<void> {

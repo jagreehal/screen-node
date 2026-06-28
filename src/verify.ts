@@ -106,7 +106,7 @@ export function readSigningKey(file: string): string {
   try {
     return readFileSync(file, 'utf8');
   } catch {
-    throw new Error(`couldn't read signing key at ${file}, generate one with \`screen keygen\` and point SANDBOX_SIGNING_KEY at the private half`);
+    throw new Error(`couldn't read signing key at ${file}, generate one with \`screen keygen\` and point SCREEN_SIGNING_KEY at the private half`);
   }
 }
 
@@ -120,8 +120,8 @@ export function runKeygen(opts: { json?: boolean } = {}): number {
   }
   // Keys go to stdout so the user pipes each half where it belongs; guidance goes to stderr (log.*).
   log.info('Ed25519 signing keypair, store the PRIVATE key as a CI secret, commit/pin the fingerprint:');
-  log.info(`  fingerprint: ${fingerprint}  (set SANDBOX_TRUSTED_KEY to this to pin the signer)`);
-  log.info('  private key → point SANDBOX_SIGNING_KEY at a file holding it, and NEVER commit it');
+  log.info(`  fingerprint: ${fingerprint}  (set SCREEN_TRUSTED_KEY to this to pin the signer)`);
+  log.info('  private key → point SCREEN_SIGNING_KEY at a file holding it, and NEVER commit it');
   console.log(privateKeyPem.trimEnd());
   console.log(publicKeyPem.trimEnd());
   return 0;
