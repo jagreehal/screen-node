@@ -1,7 +1,6 @@
 #!/usr/bin/env node
 import path from 'node:path';
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { execFileSync, spawnSync } from 'node:child_process';
 import { confirm, isCancel, spinner } from '@clack/prompts';
 import type { SandboxConfig } from './config.js';
