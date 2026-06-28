@@ -64,7 +64,7 @@
     "release": "pnpm build && changeset publish"
   },
   "dependencies": {
-    "@clack/prompts": "1.5.1",
+    "@clack/prompts": "1.6.0",
     "zod": "4.4.3"
   },
   "devDependencies": {
