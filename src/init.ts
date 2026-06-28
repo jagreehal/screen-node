@@ -40,25 +40,25 @@ const AGENT_DIR = '.sandbox';
 const AGENT_FILE = 'AGENT.md';
 const AGENT_BODY = `When working in this repo:
 
-- Use \`sandbox install\`, not \`npm install\`
-- Use \`sandbox add <pkg>\`, not \`npm install <pkg>\`
-- Use \`sandbox update\`, not \`npm update\`
-- Use \`sandbox dev\`, not \`npm run dev\`
-- Use \`sandbox test\`, not \`npm test\`
-- Use \`sandbox script build\` when a script name collides with a sandbox command
+- Use \`screen install\`, not \`npm install\`
+- Use \`screen add <pkg>\`, not \`npm install <pkg>\`
+- Use \`screen update\`, not \`npm update\`
+- Use \`screen dev\`, not \`npm run dev\`
+- Use \`screen test\`, not \`npm test\`
+- Use \`screen script build\` when a script name collides with a screen command
 - Do not ask for host credentials unless the user explicitly approves a grant
 `;
 
 /** Write a config object (with a `$schema` ref for editor autocomplete) to cwd. */
 export function writeSandboxConfig(cwd: string, config: SandboxConfig): string {
-  const file = path.join(cwd, 'sandbox.config.json');
+  const file = path.join(cwd, 'screen.config.json');
   const written = writeConfig(file, config);
   ensureLocalConfigIgnored(cwd); // the personal override is meant to stay out of git
   return written;
 }
 
 /**
- * Keep `sandbox.config.local.json` (the personal, loosen-loudly override) out of version
+ * Keep `screen.config.local.json` (the personal, loosen-loudly override) out of version
  * control, so committing it can't silently widen the boundary for the whole team. Idempotent;
  * creates `.gitignore` if absent. Returns true when it changed the file.
  */
@@ -67,7 +67,7 @@ export function ensureLocalConfigIgnored(cwd: string): boolean {
   const body = existsSync(file) ? readFileSync(file, 'utf8') : '';
   if (body.split(/\r?\n/).some((line) => line.trim() === LOCAL_CONFIG_NAME)) return false;
   const sep = body === '' || body.endsWith('\n') ? '' : '\n';
-  writeFileSync(file, `${body}${sep}# personal sandbox overrides, do not commit\n${LOCAL_CONFIG_NAME}\n`);
+  writeFileSync(file, `${body}${sep}# personal screen overrides, do not commit\n${LOCAL_CONFIG_NAME}\n`);
   return true;
 }
 
@@ -93,8 +93,8 @@ export function writeAgentArtifacts(cwd: string): AgentArtifacts {
 
 export function initNextCommands(preset: PresetName): string[] {
   return preset === 'vibe' || preset === 'agent' || preset === 'trusted'
-    ? ['sandbox check zod', 'sandbox install', 'sandbox dev']
-    : ['sandbox check zod', 'sandbox install', 'sandbox test'];
+    ? ['screen check zod', 'screen install', 'screen dev']
+    : ['screen check zod', 'screen install', 'screen test'];
 }
 
 /** Post-init tips, one string per tip. The first two apply to every preset; agent adds one. */
@@ -107,12 +107,12 @@ export function initTips(preset: PresetName, pm: PackageManager): string[] {
 
 export function printInitSummary(preset: PresetName, configFile: string, pm: PackageManager, agent?: AgentArtifacts, addedHosts: string[] = []): void {
   const rel = (f: string) => path.relative(path.dirname(configFile), f);
-  console.log(`sandbox: wrote ${path.basename(configFile)} using the ${preset} preset`);
+  console.log(`screen: wrote ${path.basename(configFile)} using the ${preset} preset`);
   if (addedHosts.length) {
-    console.log(`sandbox: added ${addedHosts.join(', ')} to egress.allow (detected from .npmrc / git deps)`);
+    console.log(`screen: added ${addedHosts.join(', ')} to egress.allow (detected from .npmrc / git deps)`);
   }
   if (agent) {
-    console.log(`sandbox: wrote ${rel(agent.agentFile)} (paste into Claude/Cursor/Codex project instructions)`);
+    console.log(`screen: wrote ${rel(agent.agentFile)} (paste into Claude/Cursor/Codex project instructions)`);
   }
   console.log('');
   console.log(projectModeLabel('no-deps'));
@@ -125,20 +125,20 @@ export function printInitSummary(preset: PresetName, configFile: string, pm: Pac
 }
 
 /**
- * Create a `sandbox.config.json` from a preset. With `--preset` it's non-interactive;
+ * Create a `screen.config.json` from a preset. With `--preset` it's non-interactive;
  * otherwise it walks an interactive picker (requires a TTY).
  */
 export async function runInit(cwd: string, opts: InitOptions = {}): Promise<number> {
-  const file = path.join(cwd, 'sandbox.config.json');
+  const file = path.join(cwd, 'screen.config.json');
 
   // Non-interactive path.
   if (opts.preset) {
     if (!PRESET_NAMES.includes(opts.preset as PresetName)) {
-      console.error(`sandbox: unknown preset '${opts.preset}' (use: ${PRESET_NAMES.join(' | ')})`);
+      console.error(`screen: unknown preset '${opts.preset}' (use: ${PRESET_NAMES.join(' | ')})`);
       return 1;
     }
     if (existsSync(file) && !opts.force) {
-      console.error(`sandbox: ${file} already exists (pass --force to overwrite)`);
+      console.error(`screen: ${file} already exists (pass --force to overwrite)`);
       return 1;
     }
     const preset = opts.preset as PresetName;
@@ -155,15 +155,15 @@ export async function runInit(cwd: string, opts: InitOptions = {}): Promise<numb
   // --force to overwrite. Keeps `sandbox init` from failing in CI / agent shells.
   if (!process.stdout.isTTY) {
     const fallback: PresetName = 'balanced';
-    console.log(`sandbox: no TTY and no --preset given, using the '${fallback}' preset (safe default).`);
-    console.log(`sandbox: re-run with --preset ${PRESET_NAMES.join('|')} to choose a different one.`);
+    console.log(`screen: no TTY and no --preset given, using the '${fallback}' preset (safe default).`);
+    console.log(`screen: re-run with --preset ${PRESET_NAMES.join('|')} to choose a different one.`);
     return runInit(cwd, { ...opts, preset: fallback });
   }
 
-  p.intro('sandbox-node init');
+  p.intro('screen-node init');
 
   if (existsSync(file) && !opts.force) {
-    const ok = await p.confirm({ message: 'sandbox.config.json exists. Overwrite?', initialValue: false });
+    const ok = await p.confirm({ message: 'screen.config.json exists. Overwrite?', initialValue: false });
     if (p.isCancel(ok) || !ok) {
       p.cancel('Kept existing config.');
       return 1;
@@ -212,9 +212,9 @@ export async function runInit(cwd: string, opts: InitOptions = {}): Promise<numb
   const addedHosts = mergeDetectedEgress(cwd, config);
   const configFile = writeSandboxConfig(cwd, config);
   const agent = preset === 'agent' ? writeAgentArtifacts(cwd) : undefined;
-  p.outro(`Wrote sandbox.config.json (${preset})`);
+  p.outro(`Wrote screen.config.json (${preset})`);
   printInitSummary(preset, configFile, resolvePackageManager(cwd), agent, addedHosts);
-  if (groupHosts.length) console.log(`sandbox: added ${groups.join(', ')} group(s) to egress.allow: ${groupHosts.join(', ')}`);
+  if (groupHosts.length) console.log(`screen: added ${groups.join(', ')} group(s) to egress.allow: ${groupHosts.join(', ')}`);
   return 0;
 }
 

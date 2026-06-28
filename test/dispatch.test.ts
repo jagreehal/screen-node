@@ -205,23 +205,23 @@ describe('isGlobalInstall, global installs across every package manager', () => 
 const unwrap = (cmd: string): string[] | undefined => unwrapSelfInvocation(cmd.split(' ').filter(Boolean));
 
 describe('unwrapSelfInvocation, never sandbox sandbox', () => {
-  it('unwraps `npx @jagreehal/sandbox-node <cmd>` to the bare subcommand', () => {
-    expect(unwrap('npx @jagreehal/sandbox-node check lodash')).toEqual(['check', 'lodash']);
+  it('unwraps `npx @jagreehal/screen-node <cmd>` to the bare subcommand', () => {
+    expect(unwrap('npx @jagreehal/screen-node check lodash')).toEqual(['check', 'lodash']);
   });
 
   it('handles every npx-family runner and a version pin', () => {
-    expect(unwrap('bunx @jagreehal/sandbox-node doctor')).toEqual(['doctor']);
-    expect(unwrap('pnpm dlx @jagreehal/sandbox-node@latest check')).toEqual(['check']);
-    expect(unwrap('npm exec @jagreehal/sandbox-node -- check express')).toEqual(['check', 'express']);
-    expect(unwrap('x sandbox-node@1.7.0 verify')).toEqual(['verify']);
+    expect(unwrap('bunx @jagreehal/screen-node doctor')).toEqual(['doctor']);
+    expect(unwrap('pnpm dlx @jagreehal/screen-node@latest check')).toEqual(['check']);
+    expect(unwrap('npm exec @jagreehal/screen-node -- check express')).toEqual(['check', 'express']);
+    expect(unwrap('x screen-node@1.7.0 verify')).toEqual(['verify']);
   });
 
   it('skips runner flags like -y before the package', () => {
-    expect(unwrap('npx -y @jagreehal/sandbox-node check')).toEqual(['check']);
+    expect(unwrap('npx -y @jagreehal/screen-node check')).toEqual(['check']);
   });
 
   it('returns [] when the CLI is invoked with no subcommand (so it falls through to help)', () => {
-    expect(unwrap('npx @jagreehal/sandbox-node')).toEqual([]);
+    expect(unwrap('npx @jagreehal/screen-node')).toEqual([]);
   });
 
   it('leaves a real npx of some OTHER package alone', () => {

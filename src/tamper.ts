@@ -62,17 +62,6 @@ export function classifyCommand(argv: string[]): CommandKind {
   return 'other';
 }
 
-/**
- * The one calm closing line after a contained dependency op, or undefined when it shouldn't show.
- * Only a successful (`code === 0`) install-class command earns it — a dev server or a failed run
- * says its own thing, so those (`classifyCommand` → 'other', or a non-zero exit) stay quiet. Pure,
- * so the "show it for install, hide it for run/failure" rule is testable.
- */
-export function containedSuccessLine(code: number, argv: string[]): string | undefined {
-  if (code !== 0 || classifyCommand(argv) === 'other') return undefined;
-  return '✓ done, ran in a throwaway sandbox, now deleted; it never had your credentials or home dir';
-}
-
 function isExpectedProjectWrite(rel: string, kind: CommandKind): boolean {
   const file = normalize(rel);
   if (kind === 'other') return false;

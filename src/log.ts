@@ -6,10 +6,10 @@ export type LogFields = Record<string, unknown>;
 
 const ORDER: Record<LogLevel, number> = { debug: 10, info: 20, warn: 30, error: 40 };
 const HUMAN_PREFIX: Record<LogLevel, string> = {
-  debug: 'sandbox debug: ',
-  info: 'sandbox: ',
-  warn: 'sandbox: ⚠ ',
-  error: 'sandbox: ✖ ',
+  debug: 'screen debug: ',
+  info: 'screen: ',
+  warn: 'screen: ⚠ ',
+  error: 'screen: ✖ ',
 };
 
 /**

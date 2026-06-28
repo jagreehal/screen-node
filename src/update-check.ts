@@ -13,7 +13,7 @@ import { createRegistryClient } from './risk.js';
  * First run sees nothing (empty cache) and kicks off the refresh; the next run shows the notice.
  */
 
-export const PACKAGE_NAME = '@jagreehal/sandbox-node';
+export const PACKAGE_NAME = '@jagreehal/screen-node';
 const CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000; // once a day, like update-notifier's default
 
 interface CacheState {
@@ -78,7 +78,7 @@ export function updateBanner(current: string, cache: CacheState = readCache()): 
   const lines = [
     `Update available  ${current} → ${cache.latest}`,
     `Run  npm i -g ${PACKAGE_NAME}  to update`,
-    `sandbox checked npm for this. disable: --no-update-check or NO_UPDATE_NOTIFIER=1`,
+    `screen checked npm for this. disable: --no-update-check or NO_UPDATE_NOTIFIER=1`,
   ];
   const width = Math.max(...lines.map((l) => l.length));
   const top = `┌${'─'.repeat(width + 2)}┐`;

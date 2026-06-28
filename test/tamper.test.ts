@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { classifyCommand, containedSuccessLine, sourceWriteExit, summarizeUnexpectedChanges, wroteProjectLocalPnpmStore, type TreeSnapshot } from '../src/tamper.js';
+import { classifyCommand, sourceWriteExit, summarizeUnexpectedChanges, wroteProjectLocalPnpmStore, type TreeSnapshot } from '../src/tamper.js';
 
 function snap(files: Record<string, string>): TreeSnapshot {
   return { files: new Map(Object.entries(files)) };
@@ -111,19 +111,3 @@ describe('wroteProjectLocalPnpmStore', () => {
     expect(wroteProjectLocalPnpmStore(before, after)).toBe(false);
   });
 });
-
-describe('containedSuccessLine', () => {
-  it('shows the calm "you were safe" close after a successful install-class command', () => {
-    expect(containedSuccessLine(0, ['npm', 'install'])).toContain('throwaway sandbox');
-    expect(containedSuccessLine(0, ['corepack', 'pnpm', 'add', 'zod'])).toContain('credentials');
-  });
-
-  it('stays quiet for a dev server / script run (classifyCommand → other)', () => {
-    expect(containedSuccessLine(0, ['npm', 'run', 'dev'])).toBeUndefined();
-    expect(containedSuccessLine(0, ['node', 'server.js'])).toBeUndefined();
-  });
-
-  it('stays quiet when the install failed, a non-zero exit says its own thing', () => {
-    expect(containedSuccessLine(1, ['npm', 'install'])).toBeUndefined();
-  });
-})

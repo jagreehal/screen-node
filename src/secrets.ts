@@ -224,7 +224,7 @@ export function scanText(text: string, rules: SecretRule[] = SECRET_RULES): Arra
 export const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '.next', '.turbo', '.cache', 'vendor', '__pycache__', '.venv', '.terraform']);
 
 /** Lockfiles and obvious non-secret-bearing files: skipped by name. Lockfiles hash to JWT-like noise. */
-const SKIP_FILES = new Set(['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lock', 'bun.lockb', 'sandbox.schema.json']);
+const SKIP_FILES = new Set(['package-lock.json', 'pnpm-lock.yaml', 'yarn.lock', 'bun.lock', 'bun.lockb', 'screen.schema.json']);
 
 const MAX_FILE_BYTES = 512 * 1024; // skip large/binary blobs; secrets live in small config/source files
 

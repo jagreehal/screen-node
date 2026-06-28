@@ -8,12 +8,12 @@ import { appendAudit, generateSigningKey, verifyReceipt, type AuditEntry } from 
 /** A project dir with a committed config (+ optional personal local override). Returns the dir. */
 function project(json: string, local?: string): string {
   const dir = mkdtempSync(path.join(tmpdir(), 'sbx-verify-'));
-  writeFileSync(path.join(dir, 'sandbox.config.json'), json);
-  if (local !== undefined) writeFileSync(path.join(dir, 'sandbox.config.local.json'), local);
+  writeFileSync(path.join(dir, 'screen.config.json'), json);
+  if (local !== undefined) writeFileSync(path.join(dir, 'screen.config.local.json'), local);
   return dir;
 }
 
-const configIn = (dir: string) => path.join(dir, 'sandbox.config.json');
+const configIn = (dir: string) => path.join(dir, 'screen.config.json');
 
 describe('verifyConfig', () => {
   // Isolate the user-global layer so a real file can't sway the gate.
@@ -31,10 +31,10 @@ describe('verifyConfig', () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'sbx-verify-empty-'));
     const res = verifyConfig(dir, undefined);
     expect(res.ok).toBe(false);
-    expect(res.problems[0]).toMatch(/no committed sandbox\.config\.json/);
+    expect(res.problems[0]).toMatch(/no committed screen\.config\.json/);
   });
 
-  it('default usage (cwd only) resolves cwd/sandbox.config.json and passes when it exists', () => {
+  it('default usage (cwd only) resolves cwd/screen.config.json and passes when it exists', () => {
     const dir = project('{ "install": { "network": "allowlist" }, "run": { "network": "none" } }');
     const res = verifyConfig(dir); // no explicit configPath — the regression case
     expect(res.ok).toBe(true);

@@ -86,7 +86,7 @@ function riskDetailLine(hint: RiskHint, pm: PackageManager | undefined): string 
     if (!aged) return head;
     // Offer the newest release that already predates the worm window. Framed as age, never "safe":
     // an older version is more battle-tested, not certified clean. Read-only suggestion, no auto-swap.
-    const pin = pm ? `: sandbox ${pm} add ${hint.package}@${aged.version}` : '';
+    const pin = pm ? `: screen ${pm} add ${hint.package}@${aged.version}` : '';
     return `${head}\n    ↳ ${aged.version} predates the worm window (published ${humanAge(aged.ageMs)})${pin}`;
   }
   // High-signal codes (typosquat, provenance regression, maintainer takeover, expired domain) are
@@ -1248,7 +1248,7 @@ export function hintsFromResolved(resolved: ResolvedTarget[], now: Date): RiskHi
           code: 'install_script',
           package: pkg.name,
           version: pkg.version,
-          message: `has ${script} script, contained in sandbox`,
+          message: `has ${script} script (runs on your host during install)`,
           detail: { script },
         });
       }
@@ -1290,7 +1290,7 @@ export function hintsFromResolved(resolved: ResolvedTarget[], now: Date): RiskHi
         code: 'bin_exposed',
         package: pkg.name,
         version: pkg.version,
-        message: `exposes command-line binary, contained in sandbox`,
+        message: `exposes a command-line binary`,
         detail: { bin },
       });
     }

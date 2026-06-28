@@ -194,12 +194,11 @@ export function writeBuildApprovals(rootDir: string, decisions: Map<string, bool
 
 /**
  * Interactive approval — all packages selected by default (the common case is "yes, build them").
- * `contained` adjusts the honesty of the prompt: a contained install runs these scripts in the
- * sandbox (safe to default-allow), a native install runs them on the host (no boundary, so the line
- * says so instead of reassuring). Returns the decision map, or null if the user cancelled.
+ * The prompt is honest that these scripts run on the host with no boundary, so the user is making a
+ * real trust decision, not rubber-stamping. Returns the decision map, or null if the user cancelled.
  */
-export async function promptBuildApprovals(pending: string[], contained: boolean): Promise<Map<string, boolean> | null> {
-  const where = contained ? 'contained in the sandbox' : 'on your host, with no container boundary';
+export async function promptBuildApprovals(pending: string[]): Promise<Map<string, boolean> | null> {
+  const where = 'on your host, with no container boundary';
   const selected = await multiselect<string>({
     message: `${pending.length} package(s) want to run install scripts (${where}). Allow which to build?`,
     options: pending.map((name) => ({ value: name, label: name })),
@@ -212,5 +211,5 @@ export async function promptBuildApprovals(pending: string[], contained: boolean
 }
 
 export function renderApproveBuildsCommand(pending: string[]): string {
-  return `sandbox approve-builds ${pending.join(' ')}`;
+  return `screen approve-builds ${pending.join(' ')}`;
 }

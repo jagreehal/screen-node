@@ -44,7 +44,7 @@ function isWorkspaceRoot(dir: string): boolean {
 
 export function findNearestConfig(start: string): string | undefined {
   for (const dir of parentDirs(start)) {
-    const file = path.join(dir, 'sandbox.config.json');
+    const file = path.join(dir, 'screen.config.json');
     if (existsSync(file)) return file;
   }
   return undefined;

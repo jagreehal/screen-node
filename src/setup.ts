@@ -13,10 +13,10 @@ export interface SetupOptions {
 }
 
 export async function runSetup(cwd: string, opts: SetupOptions): Promise<number> {
-  const configPath = path.join(cwd, 'sandbox.config.json');
+  const configPath = path.join(cwd, 'screen.config.json');
   const preset = (opts.preset ?? 'balanced') as PresetName;
   if (!PRESET_NAMES.includes(preset)) {
-    console.error(`sandbox: unknown preset '${opts.preset}' (use: ${PRESET_NAMES.join(' | ')})`);
+    console.error(`screen: unknown preset '${opts.preset}' (use: ${PRESET_NAMES.join(' | ')})`);
     return 1;
   }
 
@@ -29,10 +29,10 @@ export async function runSetup(cwd: string, opts: SetupOptions): Promise<number>
     printInitSummary(preset, configFile, resolvePackageManager(cwd), agent, addedHosts);
     config = readConfig(cwd);
   } else {
-    console.log(`sandbox: using existing ${path.basename(configPath)}`);
+    console.log(`screen: using existing ${path.basename(configPath)}`);
     if (preset === 'agent') {
       const { agentFile } = writeAgentArtifacts(cwd);
-      console.log(`sandbox: wrote ${path.relative(cwd, agentFile)} (paste into your agent's project instructions)`);
+      console.log(`screen: wrote ${path.relative(cwd, agentFile)} (paste into your agent's project instructions)`);
     }
   }
 
@@ -40,7 +40,7 @@ export async function runSetup(cwd: string, opts: SetupOptions): Promise<number>
     ? 'custom grants configured'
     : 'blocked (~/.ssh, ~/.npmrc, ~/.aws, home)';
   console.log('');
-  console.log(`sandbox: ${preset} preset`);
+  console.log(`screen: ${preset} preset`);
   console.log(`secrets: ${secrets}`);
   const pm = resolvePackageManager(cwd);
   console.log(projectModeLabel(detectProjectMode(cwd)));

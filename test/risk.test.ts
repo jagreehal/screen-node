@@ -195,7 +195,7 @@ describe('collectRiskHints', () => {
           code: 'install_script',
           package: 'sharp',
           version: '0.33.5',
-          message: 'has postinstall script, contained in sandbox',
+          message: 'has postinstall script (runs on your host during install)',
         }),
         expect.objectContaining({
           code: 'recent_version',
@@ -581,7 +581,7 @@ describe('planRiskHintLog, invisible when clean, clear when not', () => {
 
   it('leads with error-level packages, so the ✖ block is never buried mid-list', () => {
     // A warn package generated FIRST, an error package generated SECOND: severity must win over order.
-    const warnPkg: RiskHint = { level: 'warn', code: 'install_script', package: 'basic-ftp', version: '5.3.1', message: 'has prepare script, contained in sandbox', detail: { script: 'prepare' } };
+    const warnPkg: RiskHint = { level: 'warn', code: 'install_script', package: 'basic-ftp', version: '5.3.1', message: 'has prepare script (runs on your host during install)', detail: { script: 'prepare' } };
     const errPkg: RiskHint = { level: 'error', code: 'provenance_regression', package: 'awaitly', version: '1.34.0', message: 'version 1.33.3 shipped npm provenance but 1.34.0 dropped it', detail: { priorVersion: '1.33.3' } };
     const lines = planRiskHintLog(2, [warnPkg, errPkg], { contained: false });
     const blocks = lines.filter((l) => l.text.includes('@'));
@@ -595,7 +595,7 @@ describe('planRiskHintLog, invisible when clean, clear when not', () => {
     const lines = planRiskHintLog(1, [fresh], { contained: false, pm: 'pnpm' });
     const block = lines.find((l) => l.text.includes('vitest@4.1.6'))!;
     expect(block.text).toContain('↳ 4.1.4 predates the worm window (published 18 days ago)');
-    expect(block.text).toContain('sandbox pnpm add vitest@4.1.4');
+    expect(block.text).toContain('screen pnpm add vitest@4.1.4');
     expect(block.text).not.toMatch(/safe|known-good/i); // age is the only claim
   });
 })

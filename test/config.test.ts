@@ -7,16 +7,16 @@ import { loadConfig, readConfig, setLocalOff } from '../src/config.js';
 
 function withConfig(json: string): string {
   const dir = mkdtempSync(path.join(tmpdir(), 'sbx-cfg-'));
-  writeFileSync(path.join(dir, 'sandbox.config.json'), json);
+  writeFileSync(path.join(dir, 'screen.config.json'), json);
   return dir;
 }
 
 /** Project + sibling local override in a temp dir. Returns the project config path. */
 function withLayers(project: string, local?: string): string {
   const dir = mkdtempSync(path.join(tmpdir(), 'sbx-layer-'));
-  const projectFile = path.join(dir, 'sandbox.config.json');
+  const projectFile = path.join(dir, 'screen.config.json');
   writeFileSync(projectFile, project);
-  if (local !== undefined) writeFileSync(path.join(dir, 'sandbox.config.local.json'), local);
+  if (local !== undefined) writeFileSync(path.join(dir, 'screen.config.local.json'), local);
   return projectFile;
 }
 
@@ -116,7 +116,7 @@ describe('loadConfig layering', () => {
   it('setLocalOff preserves other keys already in the local override', () => {
     const projectFile = withLayers('{}', '{ "updateCheck": false }');
     setLocalOff(projectFile, true);
-    const written = JSON.parse(readFileSync(path.join(path.dirname(projectFile), 'sandbox.config.local.json'), 'utf8'));
+    const written = JSON.parse(readFileSync(path.join(path.dirname(projectFile), 'screen.config.local.json'), 'utf8'));
     expect(written).toEqual({ updateCheck: false, off: true });
   });
 

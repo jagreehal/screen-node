@@ -35,7 +35,7 @@ describe('ensureLocalConfigIgnored', () => {
   it('creates .gitignore with the local override entry when none exists', () => {
     const dir = tmp();
     expect(ensureLocalConfigIgnored(dir)).toBe(true);
-    expect(readFileSync(path.join(dir, '.gitignore'), 'utf8')).toContain('sandbox.config.local.json');
+    expect(readFileSync(path.join(dir, '.gitignore'), 'utf8')).toContain('screen.config.local.json');
   });
 
   it('appends to an existing .gitignore without clobbering it', () => {
@@ -44,12 +44,12 @@ describe('ensureLocalConfigIgnored', () => {
     expect(ensureLocalConfigIgnored(dir)).toBe(true);
     const body = readFileSync(path.join(dir, '.gitignore'), 'utf8');
     expect(body).toContain('node_modules');
-    expect(body).toContain('sandbox.config.local.json');
+    expect(body).toContain('screen.config.local.json');
   });
 
   it('is idempotent, no change when the entry is already present', () => {
     const dir = tmp();
-    writeFileSync(path.join(dir, '.gitignore'), 'sandbox.config.local.json\n');
+    writeFileSync(path.join(dir, '.gitignore'), 'screen.config.local.json\n');
     expect(ensureLocalConfigIgnored(dir)).toBe(false);
   });
 
@@ -65,18 +65,18 @@ describe('initNextCommands', () => {
   it('suggests install + test for balanced and strict presets', () => {
     for (const preset of ['balanced', 'strict'] as const) {
       const cmds = initNextCommands(preset);
-      expect(cmds).toContain('sandbox check zod');
-      expect(cmds).toContain('sandbox install');
-      expect(cmds).toContain('sandbox test');
+      expect(cmds).toContain('screen check zod');
+      expect(cmds).toContain('screen install');
+      expect(cmds).toContain('screen test');
     }
   });
 
   it('suggests install + run dev for vibe, agent, and trusted presets', () => {
     for (const preset of ['vibe', 'agent', 'trusted'] as const) {
       const cmds = initNextCommands(preset);
-      expect(cmds).toContain('sandbox check zod');
-      expect(cmds).toContain('sandbox install');
-      expect(cmds).toContain('sandbox dev');
+      expect(cmds).toContain('screen check zod');
+      expect(cmds).toContain('screen install');
+      expect(cmds).toContain('screen dev');
     }
   });
 });

@@ -22,17 +22,17 @@ export function verifyConfig(cwd: string, configPath?: string): VerifyResult {
   const problems: string[] = [];
 
   // Resolve the project config the same way readConfig/loadConfig do, so a caller that passes only
-  // `cwd` still finds `cwd/sandbox.config.json`. The gate fails only when that file truly doesn't exist.
-  const projectFile = configPath ?? path.join(cwd, 'sandbox.config.json');
+  // `cwd` still finds `cwd/screen.config.json`. The gate fails only when that file truly doesn't exist.
+  const projectFile = configPath ?? path.join(cwd, 'screen.config.json');
   if (!existsSync(projectFile)) {
-    return { ok: false, summary, problems: [`no committed sandbox.config.json found at ${projectFile}, run \`sandbox init\` and commit it`] };
+    return { ok: false, summary, problems: [`no committed screen.config.json found at ${projectFile}, run \`screen init\` and commit it`] };
   }
 
   let loaded;
   try {
     loaded = loadConfig(cwd, projectFile);
   } catch (e) {
-    return { ok: false, summary, problems: [e instanceof Error ? e.message.replace(/^sandbox:\s*/, '') : String(e)] };
+    return { ok: false, summary, problems: [e instanceof Error ? e.message.replace(/^screen:\s*/, '') : String(e)] };
   }
 
   // A personal layer (user-global or *.local.json) loosening past the committed boundary fails
@@ -66,7 +66,7 @@ export function runVerify(cwd: string, configPath?: string): number {
   const { ok, summary, problems } = verifyConfig(cwd, configPath);
   for (const line of summary) log.info(`  ${line}`);
   if (ok) {
-    log.info('verified: installs run through a committed sandbox boundary');
+    log.info('verified: installs run through a committed screen boundary');
     return 0;
   }
   for (const p of problems) log.error(p);
@@ -106,7 +106,7 @@ export function readSigningKey(file: string): string {
   try {
     return readFileSync(file, 'utf8');
   } catch {
-    throw new Error(`couldn't read signing key at ${file}, generate one with \`sandbox keygen\` and point SANDBOX_SIGNING_KEY at the private half`);
+    throw new Error(`couldn't read signing key at ${file}, generate one with \`screen keygen\` and point SANDBOX_SIGNING_KEY at the private half`);
   }
 }
 

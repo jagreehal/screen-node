@@ -16,8 +16,8 @@ export const SandboxConfigSchema = z
     /**
      * Turn screening OFF for this project: every operation command (`install`/`add`/`run`/the
      * pass-through `screen npm …`) runs directly on the host, exactly as if you'd typed it without
-     * `screen`. The escape hatch for a repo you trust — commit it in `sandbox.config.json`, or set it
-     * only for yourself in `sandbox.config.local.json`. The env var `SANDBOX_OFF=1` does the same for
+     * `screen`. The escape hatch for a repo you trust — commit it in `screen.config.json`, or set it
+     * only for yourself in `screen.config.local.json`. The env var `SCREEN_OFF=1` does the same for
      * one command or one shell.
      * Screen-only commands (`check`, `doctor`, `init`, `verify`, …) keep working regardless.
      */
@@ -125,7 +125,7 @@ export const SandboxConfigSchema = z
   .strict();
 
 export type SandboxConfig = z.infer<typeof SandboxConfigSchema>;
-export const SANDBOX_SCHEMA_REF = './node_modules/@jagreehal/sandbox-node/sandbox.schema.json';
+export const SANDBOX_SCHEMA_REF = './node_modules/@jagreehal/screen-node/screen.schema.json';
 
 /**
  * Strip JSONC comments (`// line` and `/* block *​/`) while preserving any `//`
@@ -221,10 +221,10 @@ function readRaw(file: string): Record<string, unknown> | undefined {
   try {
     parsed = JSON.parse(stripJsonComments(readFileSync(file, 'utf8')));
   } catch (e) {
-    throw new Error(`sandbox: invalid JSON in ${file}: ${(e as Error).message}`);
+    throw new Error(`screen: invalid JSON in ${file}: ${(e as Error).message}`);
   }
   const clean = dropNoteKeys(parsed);
-  if (!isPlainObject(clean)) throw new Error(`sandbox: ${file} must contain a JSON object`);
+  if (!isPlainObject(clean)) throw new Error(`screen: ${file} must contain a JSON object`);
   return clean;
 }
 
@@ -235,9 +235,9 @@ export function userConfigPath(): string {
 }
 
 /** Filename of the personal, git-ignored override that sits beside a project config. */
-export const LOCAL_CONFIG_NAME = 'sandbox.config.local.json';
+export const LOCAL_CONFIG_NAME = 'screen.config.local.json';
 
-/** Sibling personal override of a project config: `sandbox.config.local.json` (git-ignored). */
+/** Sibling personal override of a project config: `screen.config.local.json` (git-ignored). */
 export function localConfigPath(projectFile: string): string {
   return path.join(path.dirname(projectFile), LOCAL_CONFIG_NAME);
 }
@@ -263,7 +263,7 @@ function parseConfig(raw: Record<string, unknown>, label: string): SandboxConfig
   const parsed = SandboxConfigSchema.safeParse(raw);
   if (!parsed.success) {
     const issues = parsed.error.issues.map((i) => `  - ${i.path.join('.') || '(root)'}: ${i.message}`).join('\n');
-    throw new Error(`sandbox: invalid config (${label}):\n${issues}`);
+    throw new Error(`screen: invalid config (${label}):\n${issues}`);
   }
   return parsed.data;
 }
@@ -284,7 +284,7 @@ function boundaryLooseningWarnings(eff: SandboxConfig, base: SandboxConfig): str
   const added = (a: string[], b: string[]) => a.filter((x) => !b.includes(x));
   // The strongest loosening there is: a personal layer turning containment OFF entirely. Flag it
   // loudest, since every other boundary check below is moot once commands run on the host.
-  if (eff.off && !base.off) w.push('containment DISABLED (off:true) by a personal layer, every command runs on the host with NO sandbox');
+  if (eff.off && !base.off) w.push('containment DISABLED (off:true) by a personal layer, every command runs on the host with NO screening');
   if (NET_RANK[eff.install.network] > NET_RANK[base.install.network]) w.push(`install.network widened to '${eff.install.network}' (team config: '${base.install.network}')`);
   if (NET_RANK[eff.run.network] > NET_RANK[base.run.network]) w.push(`run.network widened to '${eff.run.network}' (team config: '${base.run.network}')`);
   const egress = added(eff.egress.allow, base.egress.allow);
@@ -306,18 +306,18 @@ function boundaryLooseningWarnings(eff: SandboxConfig, base: SandboxConfig): str
 }
 
 /**
- * Load `sandbox.config.json` and its override layers, lowest precedence first:
+ * Load `screen.config.json` and its override layers, lowest precedence first:
  *
  *   1. user-global  `$XDG_CONFIG_HOME/sandbox-node/config.json`  (personal, cross-project)
- *   2. project/team `sandbox.config.json`                        (committed, reviewed)
- *   3. local        `sandbox.config.local.json`                  (personal, git-ignored)
+ *   2. project/team `screen.config.json`                        (committed, reviewed)
+ *   3. local        `screen.config.local.json`                  (personal, git-ignored)
  *
  * Layers are deep-merged as raw JSON then validated ONCE, so defaults apply to the composite
  * and unknown keys still surface as typos. A personal layer that loosens the boundary beyond
  * the committed config is reported in `warnings` (not blocked) — tighten freely, loosen loudly.
  */
 export function loadConfig(cwd: string, configPath?: string): LoadedConfig {
-  const projectFile = configPath ?? path.join(cwd, 'sandbox.config.json');
+  const projectFile = configPath ?? path.join(cwd, 'screen.config.json');
   const sources: { scope: ConfigScope; source: string }[] = [
     { scope: 'user', source: userConfigPath() },
     { scope: 'project', source: projectFile },
@@ -351,13 +351,13 @@ export function readConfig(cwd: string, configPath?: string): SandboxConfig {
 
 /**
  * The committed (team) baseline: schema defaults + the PROJECT layer ONLY — never the user-global
- * or `*.local.json` personal layers. Use this when WRITING back to the shared `sandbox.config.json`
+ * or `*.local.json` personal layers. Use this when WRITING back to the shared `screen.config.json`
  * (e.g. `sandbox allow`): writing the *merged* effective config would bake a teammate's personal
  * override (a loosened network, an extra grant) into the committed file. Reading project-only keeps
  * `allow` an additive edit to exactly what's already committed.
  */
 export function readCommittedConfig(cwd: string, configPath?: string): SandboxConfig {
-  const projectFile = configPath ?? path.join(cwd, 'sandbox.config.json');
+  const projectFile = configPath ?? path.join(cwd, 'screen.config.json');
   return parseConfig(readRaw(projectFile) ?? {}, projectFile);
 }
 

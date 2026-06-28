@@ -1,5 +1,5 @@
 {
-  "$schema": "./sandbox.schema.json",
+  "$schema": "./screen.schema.json",
   "grants": {
     "ssh-agent": false,
     "claude": "none",

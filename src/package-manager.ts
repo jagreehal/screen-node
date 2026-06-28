@@ -238,7 +238,7 @@ export function pmAuditFixArgv(pm: PackageManager, fixToken: string, args: strin
       return ['corepack', 'pnpm', 'audit', fixToken, ...args];
     case 'yarn':
     case 'bun':
-      throw new Error(`sandbox: ${pm} does not support an install-class audit fix command`);
+      throw new Error(`screen: ${pm} does not support an install-class audit fix command`);
   }
 }
 
@@ -254,7 +254,7 @@ export function pmAuditSignaturesArgv(pm: PackageManager, args: string[]): strin
       return ['corepack', 'pnpm', 'audit', 'signatures', ...args];
     case 'yarn':
     case 'bun':
-      throw new Error(`sandbox: ${pm} does not support audit signatures`);
+      throw new Error(`screen: ${pm} does not support audit signatures`);
   }
 }
 

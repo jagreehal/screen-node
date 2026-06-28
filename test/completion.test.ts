@@ -11,7 +11,7 @@ import {
 describe('completionScript', () => {
   it('emits a script for every supported shell', () => {
     for (const shell of COMPLETION_SHELLS) {
-      expect(completionScript(shell), shell).toContain('sandbox');
+      expect(completionScript(shell), shell).toContain('screen');
     }
   });
 
@@ -41,16 +41,16 @@ describe('completionScript', () => {
     }
   });
 
-  it('targets both binary names (sandbox and sandbox-node)', () => {
-    expect(completionScript('zsh')).toContain('sandbox-node');
-    expect(completionScript('bash')).toContain('sandbox-node');
-    expect(completionScript('fish')).toContain('sandbox-node');
+  it('targets both binary names (screen and screen-node)', () => {
+    expect(completionScript('zsh')).toContain('screen-node');
+    expect(completionScript('bash')).toContain('screen-node');
+    expect(completionScript('fish')).toContain('screen-node');
   });
 
   it('uses the idiomatic entry point for each shell', () => {
     expect(completionScript('zsh')).toContain('#compdef');
     expect(completionScript('bash')).toContain('complete -F');
-    expect(completionScript('fish')).toContain('complete -c sandbox');
+    expect(completionScript('fish')).toContain('complete -c screen');
   });
 
   describe('inline mode (sourced from an rc file, not an fpath file)', () => {
@@ -58,7 +58,7 @@ describe('completionScript', () => {
       const inline = completionScript('zsh', { inline: true });
       expect(inline).not.toContain('#compdef');
       // still wires the completer, but guarded so a pre-compinit rc never errors
-      expect(inline).toContain('compdef _sandbox sandbox sandbox-node');
+      expect(inline).toContain('compdef _screen screen screen-node');
       expect(inline).toContain('$+functions[compdef]');
     });
 

@@ -27,14 +27,14 @@ export function parseEnvFile(text: string, file = '.env'): Record<string, string
     if (line === '' || line.startsWith('#')) continue;
     const body = line.startsWith('export ') ? line.slice(7).trimStart() : line;
     const match = /^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/.exec(body);
-    if (!match) throw new Error(`sandbox: invalid env file ${file}:${idx + 1}`);
+    if (!match) throw new Error(`screen: invalid env file ${file}:${idx + 1}`);
     const [, key, rawValue] = match;
     let value = rawValue ?? '';
     if (value.startsWith('"')) {
-      if (!value.endsWith('"') || value.length === 1) throw new Error(`sandbox: invalid env file ${file}:${idx + 1}`);
+      if (!value.endsWith('"') || value.length === 1) throw new Error(`screen: invalid env file ${file}:${idx + 1}`);
       value = decodeDoubleQuoted(value.slice(1, -1));
     } else if (value.startsWith("'")) {
-      if (!value.endsWith("'") || value.length === 1) throw new Error(`sandbox: invalid env file ${file}:${idx + 1}`);
+      if (!value.endsWith("'") || value.length === 1) throw new Error(`screen: invalid env file ${file}:${idx + 1}`);
       value = value.slice(1, -1);
     } else {
       value = value.replace(/\s+#.*$/, '').trim();
@@ -68,7 +68,7 @@ export function loadEnvFiles(specs: string[], baseDir: string): Record<string, s
   for (const spec of specs) {
     const { file: rel, keys } = parseEnvFileSpec(spec);
     const file = path.isAbsolute(rel) ? rel : path.join(baseDir, rel);
-    if (!existsSync(file)) throw new Error(`sandbox: env file not found: ${file}`);
+    if (!existsSync(file)) throw new Error(`screen: env file not found: ${file}`);
     const parsed = parseEnvFile(readFileSync(file, 'utf8'), file);
     if (keys) {
       // Allowlist: inject only the named keys that exist (a missing one is skipped, like `--env`).

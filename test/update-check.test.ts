@@ -32,7 +32,7 @@ describe('disabledByEnv', () => {
 describe('updateBanner', () => {
   it('renders a notice only when the cached latest is strictly newer', () => {
     expect(updateBanner('1.0.0', { lastCheckMs: 0, latest: '1.2.0' })).toContain('1.0.0 → 1.2.0');
-    expect(updateBanner('1.0.0', { lastCheckMs: 0, latest: '1.2.0' })).toContain('npm i -g @jagreehal/sandbox-node');
+    expect(updateBanner('1.0.0', { lastCheckMs: 0, latest: '1.2.0' })).toContain('npm i -g @jagreehal/screen-node');
     expect(updateBanner('1.0.0', { lastCheckMs: 0, latest: '1.0.0' })).toBeUndefined();
     expect(updateBanner('2.0.0', { lastCheckMs: 0, latest: '1.2.0' })).toBeUndefined();
     expect(updateBanner('1.0.0', { lastCheckMs: 0 })).toBeUndefined(); // never checked yet

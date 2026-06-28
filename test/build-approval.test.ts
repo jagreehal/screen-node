@@ -140,6 +140,6 @@ allowBuilds:
 
 describe('renderApproveBuildsCommand', () => {
   it('renders a ready-to-run one-liner', () => {
-    expect(renderApproveBuildsCommand(['protobufjs', 'esbuild'])).toBe('sandbox approve-builds protobufjs esbuild');
+    expect(renderApproveBuildsCommand(['protobufjs', 'esbuild'])).toBe('screen approve-builds protobufjs esbuild');
   });
 });

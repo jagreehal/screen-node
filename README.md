@@ -51,9 +51,14 @@ action you approve before anything is fetched.
 [`@jagreehal/sandbox-node`](https://github.com/jagreehal/sandbox-node), repackaged
 as a standalone, container-free tool. The inherited Docker/container subsystem
 (image build, egress proxy, firewall, devcontainer) has been **removed**: installs
-run natively on the host, and the gates are heuristics, not a boundary. Two
-follow-ups remain: a `sandbox`→`screen` rename of the log prefix and a few help
-strings, and updating `docs/` + `SECURITY.md`, which still describe the old model.
+run natively on the host, the command and output are branded `screen`, and the
+gates are heuristics, not a boundary. See [`SECURITY.md`](SECURITY.md) for the
+honest threat model and [`AGENTS.md`](AGENTS.md) for repo orientation.
+
+Remaining follow-ups: the `test/integration/` golden tests still assert some
+removed container flags; a few `SANDBOX_*` env var names and on-disk paths
+(`sandbox.advisories.json`, the `.sandbox` agent dir) are not yet renamed; and a
+fresh command reference + usage skills need authoring for screen-node.
 
 ## License
 

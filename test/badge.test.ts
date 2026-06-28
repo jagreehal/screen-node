@@ -23,13 +23,13 @@ describe('parseRepoSlug', () => {
 describe('badge rendering', () => {
   it('static badge claims provenance, not safety, and links to the repo', () => {
     const b = staticBadge('me/app');
-    expect(b).toContain('installs-sandboxed');
+    expect(b).toContain('deps-screened');
     expect(b).toContain('https://github.com/me/app');
     expect(b).not.toMatch(/\bsafe\b/i);
   });
 
   it('static badge falls back to the home project when slug is unknown', () => {
-    expect(staticBadge(undefined)).toContain('jagreehal/sandbox-node');
+    expect(staticBadge(undefined)).toContain('jagreehal/screen-node');
   });
 
   it('workflow badge points at the CI run for evidence', () => {

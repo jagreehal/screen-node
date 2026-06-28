@@ -35,7 +35,7 @@
     "bin",
     "dist",
     "data",
-    "sandbox.schema.json",
+    "screen.schema.json",
     "README.md"
   ],
   "engines": {

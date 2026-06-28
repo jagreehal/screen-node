@@ -31,16 +31,16 @@ describe('allowlist helpers', () => {
     );
   });
 
-  it('renders a sandbox allow command', () => {
-    expect(renderAllowCommand(['nodejs.org', 'npm.pkg.github.com'])).toBe('sandbox allow nodejs.org npm.pkg.github.com');
+  it('renders a screen allow command', () => {
+    expect(renderAllowCommand(['nodejs.org', 'npm.pkg.github.com'])).toBe('screen allow nodejs.org npm.pkg.github.com');
   });
 
   it('adds hosts to egress.allow and writes the config back', () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'sbx-allow-'));
-    writeFileSync(path.join(dir, 'sandbox.config.json'), '{}');
+    writeFileSync(path.join(dir, 'screen.config.json'), '{}');
     const result = allowHosts(dir, ['nodejs.org', 'https://npm.pkg.github.com/path']);
     expect(result.added).toEqual(['nodejs.org', 'npm.pkg.github.com']);
-    expect(JSON.parse(readFileSync(path.join(dir, 'sandbox.config.json'), 'utf8')).egress.allow).toEqual([
+    expect(JSON.parse(readFileSync(path.join(dir, 'screen.config.json'), 'utf8')).egress.allow).toEqual([
       'nodejs.org',
       'npm.pkg.github.com',
       'npmjs.com',
@@ -50,16 +50,16 @@ describe('allowlist helpers', () => {
 
   it('normalizes scheme-relative and host:port forms to bare hosts', () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'sbx-allow-'));
-    writeFileSync(path.join(dir, 'sandbox.config.json'), '{"egress":{"allow":[]}}');
+    writeFileSync(path.join(dir, 'screen.config.json'), '{"egress":{"allow":[]}}');
     const result = allowHosts(dir, ['//registry.npmjs.org/:_authToken', 'registry.local:4873/path', '   ']);
     expect(result.added).toEqual(['registry.local:4873', 'registry.npmjs.org']);
   });
 
   it('allowHostsLocal writes a minimal personal override, not the whole team allowlist', () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'sbx-allow-local-'));
-    writeFileSync(path.join(dir, 'sandbox.config.json'), '{"egress":{"allow":["npmjs.org","npmjs.com","team-registry.local"]}}');
+    writeFileSync(path.join(dir, 'screen.config.json'), '{"egress":{"allow":["npmjs.org","npmjs.com","team-registry.local"]}}');
     const result = allowHostsLocal(dir, ['nodejs.org']);
-    expect(result.file.endsWith('sandbox.config.local.json')).toBe(true);
+    expect(result.file.endsWith('screen.config.local.json')).toBe(true);
     expect(result.added).toEqual(['nodejs.org']);
     // Only the personal host lands in the local file — team hosts are NOT duplicated here.
     expect(JSON.parse(readFileSync(result.file, 'utf8'))).toEqual({ egress: { allow: ['nodejs.org'] } });
@@ -67,7 +67,7 @@ describe('allowlist helpers', () => {
 
   it('allowHostsLocal preserves existing local fields and merges hosts', () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'sbx-allow-local-'));
-    writeFileSync(path.join(dir, 'sandbox.config.local.json'), '{"image":"custom:latest","egress":{"allow":["a.example.com"]}}');
+    writeFileSync(path.join(dir, 'screen.config.local.json'), '{"image":"custom:latest","egress":{"allow":["a.example.com"]}}');
     const result = allowHostsLocal(dir, ['b.example.com']);
     expect(JSON.parse(readFileSync(result.file, 'utf8'))).toEqual({ image: 'custom:latest', egress: { allow: ['a.example.com', 'b.example.com'] } });
   });
@@ -76,19 +76,19 @@ describe('allowlist helpers', () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'sbx-allow-local-cfg-'));
     const cfgDir = path.join(dir, 'configs');
     mkdirSync(cfgDir);
-    const cfg = path.join(cfgDir, 'sandbox.config.json');
+    const cfg = path.join(cfgDir, 'screen.config.json');
     writeFileSync(cfg, '{}');
     const result = allowHostsLocal(dir, ['nodejs.org'], cfg);
-    expect(result.file).toBe(path.join(cfgDir, 'sandbox.config.local.json'));
+    expect(result.file).toBe(path.join(cfgDir, 'screen.config.local.json'));
   });
 
   it('allowHosts (team save) does NOT bake a personal local-layer override into the committed file', () => {
     const dir = mkdtempSync(path.join(tmpdir(), 'sbx-allow-team-'));
-    writeFileSync(path.join(dir, 'sandbox.config.json'), JSON.stringify({ egress: { allow: ['team.example.com'] }, run: { network: 'none' } }));
+    writeFileSync(path.join(dir, 'screen.config.json'), JSON.stringify({ egress: { allow: ['team.example.com'] }, run: { network: 'none' } }));
     // A personal override that loosens the boundary and adds a personal host.
-    writeFileSync(path.join(dir, 'sandbox.config.local.json'), JSON.stringify({ run: { network: 'on' }, egress: { allow: ['personal.example.com'] } }));
+    writeFileSync(path.join(dir, 'screen.config.local.json'), JSON.stringify({ run: { network: 'on' }, egress: { allow: ['personal.example.com'] } }));
     allowHosts(dir, ['nodejs.org']);
-    const written = JSON.parse(readFileSync(path.join(dir, 'sandbox.config.json'), 'utf8'));
+    const written = JSON.parse(readFileSync(path.join(dir, 'screen.config.json'), 'utf8'));
     expect(written.run.network).toBe('none'); // the personal loosening is NOT committed
     expect(written.egress.allow).toContain('team.example.com');
     expect(written.egress.allow).toContain('nodejs.org');

@@ -147,7 +147,7 @@ export function registryDiagnostics(cwd: string, config: SandboxConfig, hostEnv:
 }
 
 export function renderAllowCommand(hosts: string[]): string {
-  return `sandbox allow ${hosts.join(' ')}`;
+  return `screen allow ${hosts.join(' ')}`;
 }
 
 export function renderAllowlistSnippet(currentAllow: string[], addHosts: string[]): string {
@@ -156,7 +156,7 @@ export function renderAllowlistSnippet(currentAllow: string[], addHosts: string[
 }
 
 export function allowHosts(cwd: string, hosts: string[], configPath?: string): { file: string; added: string[]; allow: string[] } {
-  const file = configPath ?? path.join(cwd, 'sandbox.config.json');
+  const file = configPath ?? path.join(cwd, 'screen.config.json');
   // Project layer ONLY — never the merged effective config, or a personal user-global/local
   // override (a loosened network, an extra grant) would be written into the committed team file.
   const config = readCommittedConfig(cwd, configPath);
@@ -168,7 +168,7 @@ export function allowHosts(cwd: string, hosts: string[], configPath?: string): {
 }
 
 /**
- * Add hosts to the personal, git-ignored override layer (`sandbox.config.local.json`) instead of
+ * Add hosts to the personal, git-ignored override layer (`screen.config.local.json`) instead of
  * the committed team config — the "allow for me, not everyone" path from the interactive prompt.
  * Writes a minimal partial (only `egress.allow`, only the hosts this layer adds) so it stays a
  * small, readable personal delta and never duplicates the whole team allowlist. Other fields the
@@ -176,10 +176,10 @@ export function allowHosts(cwd: string, hosts: string[], configPath?: string): {
  *
  * The local file is the sibling of the ACTIVE project config, so pass `configPath` through when the
  * user ran with `--config <path>` — otherwise the override is written next to the wrong file and
- * the next run won't load it. Defaults to `<rootDir>/sandbox.config.json`'s sibling.
+ * the next run won't load it. Defaults to `<rootDir>/screen.config.json`'s sibling.
  */
 export function allowHostsLocal(rootDir: string, hosts: string[], configPath?: string): { file: string; added: string[] } {
-  const file = localConfigPath(configPath ?? path.join(rootDir, 'sandbox.config.json'));
+  const file = localConfigPath(configPath ?? path.join(rootDir, 'screen.config.json'));
   let existing: Record<string, unknown> = {};
   if (existsSync(file)) {
     const parsed = JSON.parse(stripJsonComments(readFileSync(file, 'utf8'))) as unknown;

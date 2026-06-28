@@ -138,14 +138,14 @@ export function routePassthrough(argv: string[]): Route | undefined {
   return undefined;
 }
 
-/** Package specifiers and bin names that mean "the sandbox CLI itself". */
-const SELF_PACKAGE = '@jagreehal/sandbox-node';
+/** Package specifiers and bin names that mean "the screen CLI itself". */
+const SELF_PACKAGE = '@jagreehal/screen-node';
 
-/** True for `@jagreehal/sandbox-node`, `@jagreehal/sandbox-node@latest`, `sandbox-node@1.2.3`, etc. */
+/** True for `@jagreehal/screen-node`, `@jagreehal/screen-node@latest`, `screen-node@1.2.3`, etc. */
 function isSelfPackageToken(token: string): boolean {
   const at = token.lastIndexOf('@');
   const name = at > 0 ? token.slice(0, at) : token; // keep the scope's leading '@'; drop any version suffix
-  return name === SELF_PACKAGE || name === 'sandbox-node';
+  return name === SELF_PACKAGE || name === 'screen-node';
 }
 
 /** Fetch-and-run runners (npx-family) — the surface that can end up wrapping our OWN CLI. */

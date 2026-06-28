@@ -15,16 +15,16 @@ function tree(files: Record<string, string>): string {
 }
 
 describe('resolveProjectContext', () => {
-  it('uses the nearest sandbox.config.json as the project root', () => {
+  it('uses the nearest screen.config.json as the project root', () => {
     const root = tree({
-      'sandbox.config.json': '{}',
+      'screen.config.json': '{}',
       'pnpm-workspace.yaml': 'packages:\n  - packages/*\n',
       'packages/web/package.json': '{"name":"web"}',
     });
     const pkg = path.join(root, 'packages', 'web');
     const ctx = resolveProjectContext(pkg);
     expect(ctx.rootDir).toBe(root);
-    expect(ctx.configPath).toBe(path.join(root, 'sandbox.config.json'));
+    expect(ctx.configPath).toBe(path.join(root, 'screen.config.json'));
     expect(ctx.runWorkdir).toBe('/workspace/packages/web');
   });
 
@@ -42,11 +42,11 @@ describe('resolveProjectContext', () => {
 
   it('lets an explicit config path choose the root', () => {
     const root = tree({
-      'monorepo/sandbox.config.json': '{}',
+      'monorepo/screen.config.json': '{}',
       'monorepo/apps/web/package.json': '{"name":"web"}',
     });
     const monorepo = path.join(root, 'monorepo');
-    const ctx = resolveProjectContext(path.join(monorepo, 'apps', 'web'), path.join(monorepo, 'sandbox.config.json'));
+    const ctx = resolveProjectContext(path.join(monorepo, 'apps', 'web'), path.join(monorepo, 'screen.config.json'));
     expect(ctx.rootDir).toBe(monorepo);
     expect(ctx.runWorkdir).toBe('/workspace/apps/web');
   });

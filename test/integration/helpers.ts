@@ -32,11 +32,11 @@ export interface CliResult {
 /** Run the built CLI in `cwd` and capture its output. */
 export function runCli(cwd: string, args: string[], env: Record<string, string> = {}): Promise<CliResult> {
   return new Promise((resolve) => {
-    // Scrub SANDBOX_OFF from the inherited env: the CLI now honours it (off → run on the host), so a
+    // Scrub SCREEN_OFF from the inherited env: the CLI now honours it (off → run on the host), so a
     // dev/CI shell that happens to export it would otherwise turn EVERY containment test into a
     // passthrough. Tests that exercise the off path re-add it via the `env` override below.
     const baseEnv = { ...process.env };
-    delete baseEnv.SANDBOX_OFF;
+    delete baseEnv.SCREEN_OFF;
     const child = spawn(process.execPath, [resolveCli(), ...args], {
       cwd,
       env: { ...baseEnv, ...env },
@@ -106,7 +106,7 @@ require('dns').lookup('example.com', (e) => console.log('PROBE egress=' + (e ? '
       private: true,
       dependencies: { 'bad-dep': 'file:./bad-dep' },
     }),
-    'sandbox.config.json': JSON.stringify(config),
+    'screen.config.json': JSON.stringify(config),
     'bad-dep/package.json': JSON.stringify({
       name: 'bad-dep',
       version: '1.0.0',

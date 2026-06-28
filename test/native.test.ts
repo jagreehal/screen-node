@@ -2,13 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { foldBinLeader, leaderForBin } from '../src/native.js';
 
 describe('leaderForBin', () => {
-  it('maps each sandbox-<pm> bin to its package-manager/runner leader', () => {
-    expect(leaderForBin('sandbox-npm')).toBe('npm');
-    expect(leaderForBin('sandbox-pnpm')).toBe('pnpm');
-    expect(leaderForBin('sandbox-yarn')).toBe('yarn');
-    expect(leaderForBin('sandbox-bun')).toBe('bun');
-    expect(leaderForBin('sandbox-npx')).toBe('npx');
-    expect(leaderForBin('sandbox-bunx')).toBe('bunx');
+  it('maps each screen-<pm> bin to its package-manager/runner leader', () => {
+    expect(leaderForBin('screen-npm')).toBe('npm');
+    expect(leaderForBin('screen-pnpm')).toBe('pnpm');
+    expect(leaderForBin('screen-yarn')).toBe('yarn');
+    expect(leaderForBin('screen-bun')).toBe('bun');
+    expect(leaderForBin('screen-npx')).toBe('npx');
+    expect(leaderForBin('screen-bunx')).toBe('bunx');
   });
 
   it('maps the terse s<pm> aliases too (muscle memory)', () => {
@@ -21,16 +21,16 @@ describe('leaderForBin', () => {
   });
 
   it('returns undefined for the plain bins and the from-source entry (normal dispatch)', () => {
-    expect(leaderForBin('sandbox')).toBeUndefined();
-    expect(leaderForBin('sandbox-node')).toBeUndefined();
+    expect(leaderForBin('screen')).toBeUndefined();
+    expect(leaderForBin('screen-node')).toBeUndefined();
     expect(leaderForBin('cli.ts')).toBeUndefined();
     expect(leaderForBin('cli.mjs')).toBeUndefined();
   });
 
   it('tolerates Windows shim suffixes', () => {
-    expect(leaderForBin('sandbox-pnpm.cmd')).toBe('pnpm');
-    expect(leaderForBin('sandbox-pnpm.mjs')).toBe('pnpm');
-    expect(leaderForBin('sandbox-pnpm.ps1')).toBe('pnpm');
+    expect(leaderForBin('screen-pnpm.cmd')).toBe('pnpm');
+    expect(leaderForBin('screen-pnpm.mjs')).toBe('pnpm');
+    expect(leaderForBin('screen-pnpm.ps1')).toBe('pnpm');
   });
 });
 
@@ -47,7 +47,7 @@ describe('foldBinLeader', () => {
     expect(foldBinLeader('pnpm', { cmd: undefined, args: [] })).toEqual({ cmd: 'pnpm', args: [] });
   });
 
-  it('passes the parse through unchanged for the plain sandbox bin (no leader)', () => {
+  it('passes the parse through unchanged for the plain screen bin (no leader)', () => {
     expect(foldBinLeader(undefined, { cmd: 'check', args: ['lodash'] })).toEqual({ cmd: 'check', args: ['lodash'] });
     expect(foldBinLeader(undefined, { cmd: undefined, args: [] })).toEqual({ cmd: undefined, args: [] });
   });

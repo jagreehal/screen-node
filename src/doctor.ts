@@ -42,7 +42,7 @@ export function doctorSummary(checks: Check[]): string {
 export async function runDoctor(cwd: string, opts: DoctorOptions): Promise<number> {
   const checks: Check[] = [];
 
-  const configFile = opts.config ?? path.join(cwd, 'sandbox.config.json');
+  const configFile = opts.config ?? path.join(cwd, 'screen.config.json');
   let config: SandboxConfig | undefined;
   try {
     config = readConfig(cwd, opts.config);
@@ -56,7 +56,7 @@ export async function runDoctor(cwd: string, opts: DoctorOptions): Promise<numbe
     checks.push({
       level: 'fail',
       label: 'config',
-      detail: e instanceof Error ? e.message.replace(/^sandbox:\s*/, '') : String(e),
+      detail: e instanceof Error ? e.message.replace(/^screen:\s*/, '') : String(e),
     });
   }
 

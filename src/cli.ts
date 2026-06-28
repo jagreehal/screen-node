@@ -66,7 +66,7 @@ Expert: per-PM binaries (same gated native path, shorter keystrokes)
   screen-npm/snpm · screen-yarn/syarn · screen-bun/sbun · screen-npx/snpx · screen-bunx/sbunx
 
 Advanced commands:
-  init [--preset N]    create sandbox.config.json from a preset (interactive picker,
+  init [--preset N]    create screen.config.json from a preset (interactive picker,
                        or non-interactive with --preset strict|balanced|vibe|agent|trusted [--force])
   setup [--preset N]   one-button onboarding: write config if needed, then print the next commands
   dev                  auto-detect the package manager and run the first of
@@ -74,10 +74,10 @@ Advanced commands:
   script <name>        run the named package.json script with native PM syntax.
                        Use this when the script name collides with a screen command
                        like scan/doctor.
-  allow <host...>      add host(s) to egress.allow in sandbox.config.json
-  off / on             toggle the screen wrapper for this project (writes off to sandbox.config.local.json,
+  allow <host...>      add host(s) to egress.allow in screen.config.json
+  off / on             toggle the screen wrapper for this project (writes off to screen.config.local.json,
                        your git-ignored personal override). off → screen commands pass straight through
-                       on the host here; on → gates + normal screen behavior again. The per-project twin of SANDBOX_OFF=1.
+                       on the host here; on → gates + normal screen behavior again. The per-project twin of SCREEN_OFF=1.
   completion <shell>   print a standalone tab-completion script for zsh|bash|fish (commands,
                        globals, --preset/--risk). Install it for zsh, e.g.:
                        \`screen completion zsh > "\${fpath[1]}/_screen"\`.
@@ -87,10 +87,10 @@ Advanced commands:
   check [pkg... | file.json | pm cmd]   audit packages BEFORE you install them. A read-only review pass.
                        Queries the registry + OSV advisory DB and prints
                        every finding (malware, vulns, typosquats, fresh/deprecated versions, …).
-                         sandbox check express lodash@4      bare names (the common case)
-                         sandbox check                       this project's deps (root + every workspace)
-                         sandbox check ./apps/web/package.json   the deps in a specific manifest
-                         sandbox check npm install x         a full command form
+                         screen check express lodash@4      bare names (the common case)
+                         screen check                       this project's deps (root + every workspace)
+                         screen check ./apps/web/package.json   the deps in a specific manifest
+                         screen check npm install x         a full command form
                        A package.json is read workspace-aware, so a monorepo root expands to all of
                        its packages. Blocks on malware/known-bad; --min-release-age / --fail-on-advisory
                        / --fail-on-risk tighten it for CI.
@@ -123,7 +123,7 @@ Advanced commands:
                        "boundary intact AND no installed dep is currently flagged as malware");
                        --secrets also fails if a credential is committed in the repo;
                        --sign emits an Ed25519-signed receipt of the green boundary to stdout
-                       (needs SANDBOX_SIGNING_KEY → a key file from \`sandbox keygen\`)
+                       (needs SANDBOX_SIGNING_KEY → a key file from \`screen keygen\`)
   verify-receipt <f>   verify a signed receipt from \`verify --sign\`; --fingerprint <hex> (or
                        SANDBOX_TRUSTED_KEY) pins the signer so any other key is rejected
   keygen               generate an Ed25519 signing keypair: private key → CI secret
@@ -149,7 +149,7 @@ Expert: explicit package-manager passthrough still works: \`screen npm install\`
 \`screen pnpm add zod\`, \`screen yarn upgrade\`, \`screen bunx vite\`.
 
 Globals (before the command):
-  --config <path>      use a specific sandbox.config.json
+  --config <path>      use a specific screen.config.json
   --env <NAME>         forward one host env var by name for this invocation
   --env-from <path>    parse one env file on the host and inject its values; append
                        :KEY1,KEY2 to inject only those keys (e.g. .env:FOO,BAR).
@@ -182,9 +182,9 @@ Globals (before the command):
   --no-update-check    skip the once-a-day "new version available" check for this run
                        (also off via NO_UPDATE_NOTIFIER=1, CI=1, or updateCheck:false in config)
 
-Turn it off: SANDBOX_OFF=1 runs one command (or, exported, a whole shell) straight on the host with
-no screening. For a trusted repo, set "off": true in sandbox.config.json (whole team) or
-sandbox.config.local.json (just you). Screen-only commands (check, doctor, init, verify, …) keep
+Turn it off: SCREEN_OFF=1 runs one command (or, exported, a whole shell) straight on the host with
+no screening. For a trusted repo, set "off": true in screen.config.json (whole team) or
+screen.config.local.json (just you). Screen-only commands (check, doctor, init, verify, …) keep
 working either way.
 
 Logging: human lines on stderr by default; set SANDBOX_LOG=json for NDJSON,
@@ -275,11 +275,11 @@ function applyOneOffModes(config: SandboxConfig, globals: Globals): SandboxConfi
 
 /**
  * Containment turned OFF — by `off: true` in the config (team or personal-local) or a non-empty
- * `SANDBOX_OFF` env var. When off, operation commands run straight on the host. Mirrors the shell
- * wrappers' `[ -n "$SANDBOX_OFF" ]` test so one knob means the same thing everywhere.
+ * `SCREEN_OFF` env var. When off, operation commands run straight on the host. Mirrors the shell
+ * wrappers' `[ -n "$SCREEN_OFF" ]` test so one knob means the same thing everywhere.
  */
 function sandboxOff(config: SandboxConfig): boolean {
-  return config.off || (process.env.SANDBOX_OFF ?? '') !== '';
+  return config.off || (process.env.SCREEN_OFF ?? '') !== '';
 }
 
 /**
@@ -289,7 +289,7 @@ function sandboxOff(config: SandboxConfig): boolean {
  */
 function execOnHost(argv: string[], cwd: string, globals: Globals, notice: string): number {
   if (globals.dryRun) {
-    console.log(`sandbox: ${notice}, would run on the host:\n  ${argv.join(' ')}`);
+    console.log(`screen: ${notice}, would run on the host:\n  ${argv.join(' ')}`);
     return 0;
   }
   if (globals.json) {
@@ -303,14 +303,14 @@ function execOnHost(argv: string[], cwd: string, globals: Globals, notice: strin
   return result.status ?? 1;
 }
 
-/** The host runner for "screening off" (config `off:true` or SANDBOX_OFF). */
+/** The host runner for "screening off" (config `off:true` or SCREEN_OFF). */
 function runOnHost(argv: string[], cwd: string, globals: Globals): number {
   return execOnHost(argv, cwd, globals, `screening is off (${config_off_reason()})`);
 }
 
 /** Why screening is off, for the one-line notice — the env var wins the attribution when both are set. */
 function config_off_reason(): string {
-  return (process.env.SANDBOX_OFF ?? '') !== '' ? 'SANDBOX_OFF' : 'off:true in config';
+  return (process.env.SCREEN_OFF ?? '') !== '' ? 'SCREEN_OFF' : 'off:true in config';
 }
 
 /**
@@ -318,7 +318,7 @@ function config_off_reason(): string {
  * (`sandbox npm ci`, `sandbox pnpm add zod`, `sandbox npx vite`) runs VERBATIM — truest to "as if
  * sandbox weren't in front of it", preserving `ci`/flags and the host's own package manager. A
  * sandbox shorthand (`dev`, `test`, `install`, `add`, `remove`, `x`, …) uses its resolved argv, honouring
- * `--frozen` (reproducible argv) so `SANDBOX_OFF=1 sandbox --frozen install` matches the contained path.
+ * `--frozen` (reproducible argv) so `SCREEN_OFF=1 sandbox --frozen install` matches the contained path.
  */
 function hostCommandFor(cmd: string, args: string[], route: Route, frozen: boolean, yarnBerry: boolean): string[] {
   if (routePassthrough([cmd, ...args])) return [cmd, ...args];
@@ -336,19 +336,19 @@ function resolveRoute(cmd: string, args: string[], facts: ProjectFacts): Route |
     case 'install':
       return { model: 'install', pm: facts.pm, frozen: false, args };
     case 'add':
-      if (args.length === 0) fail('usage: sandbox add <pkg>...  (deliberate package.json change)');
+      if (args.length === 0) fail('usage: screen add <pkg>...  (deliberate package.json change)');
       return { model: 'add', pm: facts.pm, pkgs: args };
     case 'remove':
-      if (args.length === 0) fail('usage: sandbox remove <pkg>...  (deliberate package.json change)');
+      if (args.length === 0) fail('usage: screen remove <pkg>...  (deliberate package.json change)');
       return { model: 'remove', pm: facts.pm, pkgs: args };
     case 'script': {
       const [script, ...rest] = args;
-      if (!script) fail('usage: sandbox script <name> [args]');
+      if (!script) fail('usage: screen script <name> [args]');
       return { model: 'run', argv: pmScriptArgv(facts.pm, script, rest) };
     }
     case 'run': {
       const argv = args[0] === '--' ? args.slice(1) : args;
-      if (argv.length === 0) fail('usage: sandbox run -- <cmd...>');
+      if (argv.length === 0) fail('usage: screen run -- <cmd...>');
       return { model: 'run', argv };
     }
     case 'x': {
@@ -379,7 +379,7 @@ function resolveCommand(cmd: string, args: string[], facts: ProjectFacts): Route
     return { model: 'run', argv: pmScriptArgv(facts.pm, scriptName, args) };
   }
   if (facts.scripts[cmd]) return { model: 'run', argv: pmScriptArgv(facts.pm, cmd, args) };
-  fail(`unknown command '${cmd}'\n  try a command you know:  sandbox install · sandbox add zod · sandbox dev · sandbox x vite\n  or a sandbox command:     init · setup · allow · check · doctor · build · install · add · remove · script · run · x · shell`);
+  fail(`unknown command '${cmd}'\n  try a command you know:  screen install · screen add zod · screen dev · screen x vite\n  or a screen command:     init · setup · allow · check · doctor · build · install · add · remove · script · run · x · shell`);
 }
 
 /**
@@ -481,12 +481,12 @@ function logReleaseAgeBlock(violations: ReleaseAgeViolation[], minDays: number, 
     `blocked by the release-age gate (min ${minDays} day${minDays === 1 ? '' : 's'})`,
     ...violations.map((v) => {
       const s = pin.get(v.name);
-      const tail = s ? `\n    ↳ pin a known-good version: sandbox ${pm} add ${v.name}@${s.version} (published ${formatAge(s.ageMs)})` : '';
+      const tail = s ? `\n    ↳ pin a known-good version: screen ${pm} add ${v.name}@${s.version} (published ${formatAge(s.ageMs)})` : '';
       return `  ${v.name}@${v.version} was published ${formatAge(v.ageMs)}${tail}`;
     }),
     'freshly-published versions are the supply-chain worm window. Options:',
     // For a bare reproduce-the-lockfile install, the right tool is the delta gate — lead with it.
-    ...(reproduce ? ['  • these are existing dependencies, not new ones, review only what a change introduces: `sandbox delta` (diffs the lockfile against origin/main, skipping versions already committed)'] : []),
+    ...(reproduce ? ['  • these are existing dependencies, not new ones, review only what a change introduces: `screen delta` (diffs the lockfile against origin/main, skipping versions already committed)'] : []),
     suggestions.length ? '  • pin the suggested older version above' : '  • pin a known-good older version',
     '  • wait until it ages past the threshold, then retry',
     '  • override this once: add --min-release-age 0 before the command',
@@ -569,7 +569,7 @@ function formatFixLine(name: string, hit: AdvisoryHit, pm: PackageManager): stri
   }
   if (!bestFix) return undefined;
   if (hit.direct) {
-    return `  → sandbox ${pm} update ${name}  (fix: ${bestFix})`;
+    return `  → screen ${pm} update ${name}  (fix: ${bestFix})`;
   }
   // Transitive: suggest overrides
   switch (pm) {
@@ -631,7 +631,7 @@ function formatAgentScan(result: { scanned: number; lockfileMissing: boolean; bl
         const allFixed = [...new Set(group.flatMap((h) => h.advisories?.flatMap((d) => d.fixedVersions ?? [])))].join(',');
         if (allFixed) {
           if (anyHit.direct) {
-            fixStr.push(`update ${name} (sandbox ${pm} update ${name})`);
+            fixStr.push(`update ${name} (screen ${pm} update ${name})`);
           } else {
             fixStr.push(`override ${name}=${allFixed} (${pm === 'pnpm' ? 'pnpm.overrides' : pm === 'yarn' ? 'resolutions' : 'overrides'})`);
           }
@@ -902,7 +902,7 @@ function renderPreflightJson(result: PreflightResult, suggestions: PinSuggestion
       advisoryHits: result.advisoryHits,
       knownBadHits: result.knownBadHits,
       deprecations: deprecatedHints(result).map((h) => ({ name: h.package, version: h.version, reason: h.code === 'deprecated' ? h.detail.deprecated : h.message })),
-      suggestions: suggestions.map((s) => ({ name: s.name, version: s.version, pin: `sandbox ${pm} add ${s.name}@${s.version}`, ageDays: days(s.ageMs) })),
+      suggestions: suggestions.map((s) => ({ name: s.name, version: s.version, pin: `screen ${pm} add ${s.name}@${s.version}`, ageDays: days(s.ageMs) })),
     },
     null,
     2,
@@ -925,7 +925,7 @@ async function runPreflightCommand(globals: Globals, config: SandboxConfig, fact
 
   if (nothingToCheck(ap) && !knownBad.length) {
     if (globals.json) console.log(JSON.stringify({ blocked: false, gatesEnabled: false, checked: 0, hints: [], ageViolations: [], advisoryHits: [], knownBadHits: [], suggestions: [] }, null, 2));
-    else log.info('no supply-chain gates enabled, pass --min-release-age, --fail-on-advisory, and/or --fail-on-risk (or `sandbox init --preset strict`)');
+    else log.info('no supply-chain gates enabled, pass --min-release-age, --fail-on-advisory, and/or --fail-on-risk (or `screen init --preset strict`)');
     return 0;
   }
 
@@ -988,14 +988,14 @@ async function runFeedsCommand(globals: Globals, config: SandboxConfig, args: st
   if (sub === 'list') {
     if (globals.json) console.log(JSON.stringify({ feeds, cacheDir: feedCacheDir() }, null, 2));
     else {
-      log.info(feeds.length ? `configured malware feeds (install.malwareFeeds):\n${feeds.map((f) => `  • ${f}`).join('\n')}` : 'no malware feeds configured, add URLs to install.malwareFeeds in sandbox.config.json');
+      log.info(feeds.length ? `configured malware feeds (install.malwareFeeds):\n${feeds.map((f) => `  • ${f}`).join('\n')}` : 'no malware feeds configured, add URLs to install.malwareFeeds in screen.config.json');
       log.info(`feed cache: ${feedCacheDir()}`);
     }
     return 0;
   }
-  if (sub !== 'update') fail('usage: sandbox feeds <update|list>');
+  if (sub !== 'update') fail('usage: screen feeds <update|list>');
   if (!feeds.length) {
-    log.info('feeds: nothing to update, add malware feed URLs to install.malwareFeeds in sandbox.config.json first');
+    log.info('feeds: nothing to update, add malware feed URLs to install.malwareFeeds in screen.config.json first');
     return 0;
   }
   log.info(`feeds: fetching ${feeds.length} feed(s) …`);
@@ -1040,7 +1040,7 @@ async function runDeltaCommand(globals: Globals, config: SandboxConfig, facts: P
   const advisories = globals.failOnAdvisory ?? config.install.failOnAdvisory;
   const failOnDeprecated = globals.failOnDeprecated ?? config.install.failOnDeprecated;
   if (minReleaseAgeDays === 0 && !advisories) {
-    log.info('delta: no blocking gates enabled, pass --min-release-age and/or --fail-on-advisory (or `sandbox init --preset strict`)');
+    log.info('delta: no blocking gates enabled, pass --min-release-age and/or --fail-on-advisory (or `screen init --preset strict`)');
   }
 
   const base = readBaseLockfile(rootDir, facts.pm, baseRef, baseFile);
@@ -1066,7 +1066,7 @@ async function runDeltaCommand(globals: Globals, config: SandboxConfig, facts: P
           advisoryHits: result.advisoryHits,
           knownBadHits: result.knownBadHits,
           deprecations: result.deprecated.map((h) => ({ name: h.package, version: h.version, message: h.message })),
-          suggestions: suggestions.map((s) => ({ name: s.name, version: s.version, pin: `sandbox ${facts.pm} add ${s.name}@${s.version}`, ageDays: days(s.ageMs) })),
+          suggestions: suggestions.map((s) => ({ name: s.name, version: s.version, pin: `screen ${facts.pm} add ${s.name}@${s.version}`, ageDays: days(s.ageMs) })),
         },
         null,
         2,
@@ -1121,7 +1121,7 @@ function parseUpgradeArgs(args: string[]): UpgradeArgs {
 /**
  * `sandbox upgrade` — move declared dependency RANGES to newer versions (what npm-check-updates does),
  * which `sandbox npm update` won't: update stays within the existing range. The release-age threshold
- * from sandbox.config.json drives ncu's `--cooldown`, so the user never re-types it and the two can't
+ * from screen.config.json drives ncu's `--cooldown`, so the user never re-types it and the two can't
  * drift. ncu (host-only: it just reads/writes package.json + queries the registry) proposes; the SAME
  * gate engine the install path uses vets the proposed versions; only on `--write` does it rewrite
  * package.json and then apply the change through the JAILED install. Blocked upgrades never write.
@@ -1143,7 +1143,7 @@ async function runUpgradeCommand(
   const policy: UpgradePolicy = { cooldownDays, target: ua.target, reject: ua.reject, filter: [] };
 
   if (!globals.json) {
-    const src = globals.minReleaseAge !== undefined ? '--min-release-age' : 'sandbox.config.json';
+    const src = globals.minReleaseAge !== undefined ? '--min-release-age' : 'screen.config.json';
     const ex = exempt.length ? `, ${exempt.length} exempt` : '';
     const cd = cooldownDays > 0 ? ` · cooldown ${cooldownDays}d (from ${src}${ex})` : ' · no cooldown (release-age gate off)';
     log.info(`upgrade: checking ${facts.pm} for newer ${ua.target} versions${cd} …`);
@@ -1205,7 +1205,7 @@ async function runUpgradeCommand(
   }
 
   if (!ua.write) {
-    log.info('upgrade: all proposed upgrades pass the gates. Apply them with:  sandbox upgrade --write');
+    log.info('upgrade: all proposed upgrades pass the gates. Apply them with:  screen upgrade --write');
     return 0;
   }
 
@@ -1264,9 +1264,9 @@ async function main(): Promise<number> {
   const globals = parsed.globals;
   const { cmd, args } = foldBinLeader(binLeader, parsed);
   if (selfArgv) {
-    const shown = ['sandbox', ...selfArgv].join(' ').trim();
+    const shown = ['screen', ...selfArgv].join(' ').trim();
     // Action + why, in one line: what we're doing, and the plain reason it's safe/expected.
-    log.info(`using the sandbox already on your machine, \`${shown}\` runs directly, instead of fetching the CLI again through npx`);
+    log.info(`using the screen already on your machine, \`${shown}\` runs directly, instead of fetching the CLI again through npx`);
   }
 
   // Hidden re-entry: the detached background checker (spawned by scheduleUpdateCheck) runs one
@@ -1288,7 +1288,7 @@ async function main(): Promise<number> {
 
   if (cmd === 'completion') {
     const shell = args.find((a) => !a.startsWith('-'));
-    if (!shell) fail(`usage: sandbox completion <${COMPLETION_SHELLS.join('|')}>`);
+    if (!shell) fail(`usage: screen completion <${COMPLETION_SHELLS.join('|')}>`);
     if (!isCompletionShell(shell)) fail(`unknown shell '${shell}' (use: ${COMPLETION_SHELLS.join(' | ')})`);
     process.stdout.write(completionScript(shell));
     return 0;
@@ -1348,7 +1348,7 @@ async function main(): Promise<number> {
       return code;
     }
     const keyFile = process.env.SANDBOX_SIGNING_KEY;
-    if (!keyFile) fail('verify --sign needs a signing key: generate one with `sandbox keygen`, then set SANDBOX_SIGNING_KEY to the private-key file');
+    if (!keyFile) fail('verify --sign needs a signing key: generate one with `screen keygen`, then set SANDBOX_SIGNING_KEY to the private-key file');
     const receipt = signVerifyReceipt(context.rootDir, readSigningKey(keyFile), { configPath: context.configPath, now: new Date(), checks });
     if (!receipt) return runVerify(context.rootDir, context.configPath); // boundary regressed since the check above (shouldn't happen)
     console.log(JSON.stringify(receipt, null, 2));
@@ -1357,7 +1357,7 @@ async function main(): Promise<number> {
 
   if (cmd === 'verify-receipt') {
     const file = args.find((a) => !a.startsWith('-'));
-    if (!file) fail('usage: sandbox verify-receipt <file.json> [--fingerprint <hex>]');
+    if (!file) fail('usage: screen verify-receipt <file.json> [--fingerprint <hex>]');
     const fpIdx = args.indexOf('--fingerprint');
     const trustedFingerprint = (fpIdx >= 0 ? args[fpIdx + 1] : undefined) ?? process.env.SANDBOX_TRUSTED_KEY;
     return runVerifyReceipt(path.resolve(invocationCwd, file), { trustedFingerprint, json: globals.json });
@@ -1369,9 +1369,9 @@ async function main(): Promise<number> {
 
   if (cmd === 'audit') {
     const sub = args[0];
-    if (sub !== 'verify') fail('usage: sandbox audit verify <log.jsonl>  (the hash-chained audit log; set SANDBOX_AUDIT_LOG to write one)');
+    if (sub !== 'verify') fail('usage: screen audit verify <log.jsonl>  (the hash-chained audit log; set SANDBOX_AUDIT_LOG to write one)');
     const file = args.slice(1).find((a) => !a.startsWith('-')) ?? process.env.SANDBOX_AUDIT_LOG;
-    if (!file) fail('usage: sandbox audit verify <log.jsonl>  (or set SANDBOX_AUDIT_LOG)');
+    if (!file) fail('usage: screen audit verify <log.jsonl>  (or set SANDBOX_AUDIT_LOG)');
     return runAuditVerify(path.resolve(invocationCwd, file), { json: globals.json });
   }
 
@@ -1409,10 +1409,10 @@ async function main(): Promise<number> {
 
   if (cmd === 'allow') {
     const hosts = args.filter(Boolean);
-    if (!hosts.length) fail('usage: sandbox allow <host...>');
+    if (!hosts.length) fail('usage: screen allow <host...>');
     const result = allowHosts(context.rootDir, hosts, context.configPath);
-    console.log(`sandbox: updated ${context.configPath ?? 'sandbox.config.json'}`);
-    console.log(result.added.length ? `sandbox: allowed ${result.added.join(', ')}` : 'sandbox: no new hosts added (already covered)');
+    console.log(`screen: updated ${context.configPath ?? 'screen.config.json'}`);
+    console.log(result.added.length ? `screen: allowed ${result.added.join(', ')}` : 'screen: no new hosts added (already covered)');
     return 0;
   }
 
@@ -1420,16 +1420,16 @@ async function main(): Promise<number> {
     // One-keystroke toggle of the `off` escape hatch, written to the personal local override so it
     // never touches the committed team config. `off` → installs run on the host here; `on` → back in
     // the sandbox (and overrides a committed off:true, since local layers win).
-    const projectFile = context.configPath ?? path.join(context.rootDir, 'sandbox.config.json');
+    const projectFile = context.configPath ?? path.join(context.rootDir, 'screen.config.json');
     const file = path.relative(context.rootDir, setLocalOff(projectFile, cmd === 'off')) || path.basename(projectFile);
     // Keep the personal override out of git — committing off:true would silently disable screening
     // for the whole team. Idempotent; only relevant when the project never ran init/setup.
     if (ensureLocalConfigIgnored(context.rootDir)) log.info(`added ${path.basename(file)} to .gitignore so it can't be committed`);
     if (cmd === 'off') {
       log.warn(`screening is now off for this project. Wrote off:true to ${file}. Future commands here run without screening, straight to your package manager. Re-enable: \`screen on\`.`);
-      if (process.env.SANDBOX_OFF) log.info('note: SANDBOX_OFF is also set in this shell, so sandbox stays off here until you unset it too');
+      if (process.env.SCREEN_OFF) log.info('note: SCREEN_OFF is also set in this shell, so screening stays off here until you unset it too');
     } else {
-      log.info(`screening is on again for this project. Wrote off:false to ${file}.${process.env.SANDBOX_OFF ? ' SANDBOX_OFF is still set in this shell, so unset it before retrying.' : ''}`);
+      log.info(`screening is on again for this project. Wrote off:false to ${file}.${process.env.SCREEN_OFF ? ' SCREEN_OFF is still set in this shell, so unset it before retrying.' : ''}`);
     }
     return 0;
   }
@@ -1506,7 +1506,7 @@ async function main(): Promise<number> {
   }
 
   const route = resolveCommand(cmd, args, facts);
-  // Screening off (config `off:true` or SANDBOX_OFF) → run the operation straight on the host without
+  // Screening off (config `off:true` or SCREEN_OFF) → run the operation straight on the host without
   // screening, as if the wrapper weren't in front of it. Checked before the gates: off means off.
   if (sandboxOff(config)) {
     return runOnHost(hostCommandFor(cmd, args, route, resolvedFrozen(route, opts, config), facts.isYarnBerry), facts.cwd, globals);

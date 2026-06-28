@@ -3,7 +3,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 
 /** Project this package lives in — the fallback link target for the static badge. */
-const HOME_SLUG = 'jagreehal/sandbox-node';
+const HOME_SLUG = 'jagreehal/screen-node';
 
 /** Pull `owner/repo` out of a git URL, an npm `repository` field, or a shorthand. */
 export function parseRepoSlug(url: string): string | undefined {
@@ -38,35 +38,35 @@ export function repoSlug(cwd: string): string | undefined {
 }
 
 /**
- * Static provenance badge: "installs sandboxed". Claims the *workflow* runs in the sandbox,
+ * Static provenance badge: "deps screened". Claims the *workflow* runs the screen gates,
  * NOT that the package is "safe" — a security tool must never make an unverifiable safety claim.
  */
 export function staticBadge(slug: string | undefined): string {
   const link = `https://github.com/${slug ?? HOME_SLUG}`;
-  return `[![installs sandboxed](https://img.shields.io/badge/installs-sandboxed-22c55e?logo=docker&logoColor=white)](${link})`;
+  return `[![deps screened](https://img.shields.io/badge/deps-screened-22c55e?logoColor=white)](${link})`;
 }
 
 /**
- * Verified badge: a GitHub Actions status badge for the workflow that runs `sandbox verify`.
+ * Verified badge: a GitHub Actions status badge for the workflow that runs `screen verify`.
  * Green only when that job passes, so it links to real evidence rather than asserting trust.
  */
 export function workflowBadge(slug: string, workflow: string): string {
   const base = `https://github.com/${slug}/actions/workflows/${workflow}`;
-  return `[![sandboxed](${base}/badge.svg)](${base})`;
+  return `[![screened](${base}/badge.svg)](${base})`;
 }
 
 export interface BadgeOptions {
-  /** GitHub Actions workflow file (e.g. `sandbox.yml`) — switches to the verified, CI-backed badge. */
+  /** GitHub Actions workflow file (e.g. `screen.yml`) — switches to the verified, CI-backed badge. */
   workflow?: string;
   /** Override the detected `owner/repo`. */
   slug?: string;
 }
 
-/** Render the markdown badge snippet for `sandbox badge`. */
+/** Render the markdown badge snippet for `screen badge`. */
 export function renderBadge(cwd: string, opts: BadgeOptions = {}): string {
   const slug = opts.slug ?? repoSlug(cwd);
   if (opts.workflow) {
-    if (!slug) return 'sandbox: could not detect owner/repo, pass --repo <owner/repo> to emit a verified badge';
+    if (!slug) return 'screen: could not detect owner/repo, pass --repo <owner/repo> to emit a verified badge';
     return workflowBadge(slug, opts.workflow);
   }
   return staticBadge(slug);

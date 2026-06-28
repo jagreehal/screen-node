@@ -5,7 +5,7 @@ import { resolvedFrozen, routeToHostArgv, type PlanOptions } from '../src/write.
 
 // The write subsystem is now its own importable module (it used to be nested closures in the
 // self-executing cli.ts). These lock the host-argv builder and the frozen resolution that the native
-// and SANDBOX_OFF paths share. End-to-end native-vs-container routing is covered by the --json
+// and SCREEN_OFF paths share. End-to-end native-vs-container routing is covered by the --json
 // integration tests (test/integration/cli.test.ts).
 
 describe('routeToHostArgv', () => {

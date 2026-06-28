@@ -4,9 +4,9 @@ import { describe, expect, it } from 'vitest';
 import { z } from 'zod';
 import { SandboxConfigSchema } from '../src/config.js';
 
-const SCHEMA_PATH = path.resolve('sandbox.schema.json');
+const SCHEMA_PATH = path.resolve('screen.schema.json');
 
-describe('sandbox.schema.json', () => {
+describe('screen.schema.json', () => {
   it('is committed', () => {
     expect(existsSync(SCHEMA_PATH)).toBe(true);
   });

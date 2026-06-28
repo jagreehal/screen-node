@@ -1,7 +1,7 @@
 // `sandbox upgrade` — move declared dependency RANGES to newer versions (the npm-check-updates job),
 // not just within the existing range (that's `sandbox npm update`). The whole point is to do it
 // SAFELY: ncu's --cooldown is the same control as the sandbox's release-age gate, so this drives ncu
-// from sandbox.config.json instead of asking the user to re-type --cooldown. ncu only reads/writes
+// from screen.config.json instead of asking the user to re-type --cooldown. ncu only reads/writes
 // package.json and queries registry metadata — it never runs package code — so it runs on the host;
 // the actual install that materialises the change still goes through the jailed install path.
 //

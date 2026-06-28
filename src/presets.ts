@@ -81,6 +81,6 @@ export const PRESET_NAMES = Object.keys(PRESETS) as PresetName[];
  */
 export function presetConfig(name: PresetName): SandboxConfig {
   const preset = PRESETS[name];
-  if (!preset) throw new Error(`sandbox: unknown preset '${name}' (use: ${PRESET_NAMES.join(' | ')})`);
+  if (!preset) throw new Error(`screen: unknown preset '${name}' (use: ${PRESET_NAMES.join(' | ')})`);
   return SandboxConfigSchema.parse(preset.config);
 }

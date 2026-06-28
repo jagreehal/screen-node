@@ -48,7 +48,7 @@ export function resolvedFrozen(route: Route, opts: PlanOptions, config: SandboxC
 export function requireLockfileForFrozen(facts: ProjectFacts, frozen: boolean): void {
   if (frozen && !facts.hasLockfile) {
     const lf = lockfileName(facts.pm);
-    fail(`reproducible install needs a committed ${lf}, run \`sandbox ${facts.pm} install <pkg>\` to create one, or drop --frozen`);
+    fail(`reproducible install needs a committed ${lf}, run \`screen ${facts.pm} install <pkg>\` to create one, or drop --frozen`);
   }
 }
 
@@ -78,7 +78,7 @@ export function routeToHostArgv(route: Route, opts: { frozen?: boolean; yarnBerr
  */
 function runNative(argv: string[], cwd: string, globals: Globals, action: string): number {
   if (globals.dryRun) {
-    console.log(`sandbox: would run natively on the host, no container:\n  ${argv.join(' ')}`);
+    console.log(`screen: would run natively on the host, no container:\n  ${argv.join(' ')}`);
     return 0;
   }
   if (globals.json) {
@@ -114,7 +114,7 @@ async function resolveBuildApprovals(ctx: WriteContext, argv: string[], installC
       return 'rerun';
     }
     case 'prompt': {
-      const decisions = await promptBuildApprovals(pending, false);
+      const decisions = await promptBuildApprovals(pending);
       if (decisions) {
         const r = writeBuildApprovals(ctx.project.rootDir, decisions);
         const parts = [r.allowed.length ? `allowed ${r.allowed.join(', ')}` : '', r.denied.length ? `denied ${r.denied.join(', ')}` : ''].filter(Boolean);
