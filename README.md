@@ -57,9 +57,10 @@ honest threat model and [`AGENTS.md`](AGENTS.md) for repo orientation.
 
 The rename to `screen` is complete: env vars use the `SCREEN_*` prefix, on-disk
 paths use the `screen` name (`screen.advisories.json`, the `.screen` agent dir),
-and the `test/integration/` golden tests no longer reference removed container
-flags. Remaining follow-up: a fresh command reference + usage skills need
-authoring for screen-node.
+and the unit + integration suites are green.
+
+Full command reference: [`docs/reference.md`](docs/reference.md) (or run `screen
+help`). Agent usage workflow: [`skills/screen-install`](skills/screen-install/SKILL.md).
 
 ## License
 
