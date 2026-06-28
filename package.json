@@ -74,7 +74,7 @@
     "tsx": "^4.19.2",
     "typescript": "6.0.3",
     "vite-plus": "0.1.24",
-    "vitest": "4.1.8"
+    "vitest": "4.1.9"
   },
   "overrides": {
     "esbuild": "0.28.0"
