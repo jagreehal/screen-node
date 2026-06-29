@@ -1,5 +1,16 @@
 # @jagreehal/sandbox-node
 
+## 2.0.1
+
+### Patch Changes
+
+- 2b81023: docs and CLI clarity: rework the README to show how screen works with real
+  before/after terminal output (clean pass, blocked finding, next-good-version
+  substitution), document auditing an existing package.json and the maintenance
+  and CI commands, and add the screen-audit skill. Drop the removed `build` and
+  `shell` container commands from the unknown-command help, and strip em dashes
+  from docs/reference.md per the no-em-dash convention.
+
 ## 2.0.0
 
 ### Major Changes

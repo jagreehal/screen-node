@@ -1,6 +1,6 @@
 {
   "name": "@jagreehal/screen-node",
-  "version": "2.0.0",
+  "version": "2.0.1",
   "description": "Screen npm/pnpm/yarn/bun dependencies for known-bad advisories, typosquats, and the release-age worm window before they install. A fast filter, not a cage.",
   "author": "Jag Reehal",
   "license": "Apache-2.0",
