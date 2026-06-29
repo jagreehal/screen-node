@@ -1,7 +1,10 @@
 ---
+"@jagreehal/screen-node": patch
 ---
 
-docs: clarify how screen-node works in the README with real before/after terminal
-output (clean pass, blocked finding, next-good-version substitution), add the
-screen-audit skill for auditing and upgrading an existing project, and strip em
-dashes from docs/reference.md per the no-em-dash convention. No package changes.
+docs and CLI clarity: rework the README to show how screen works with real
+before/after terminal output (clean pass, blocked finding, next-good-version
+substitution), document auditing an existing package.json and the maintenance
+and CI commands, and add the screen-audit skill. Drop the removed `build` and
+`shell` container commands from the unknown-command help, and strip em dashes
+from docs/reference.md per the no-em-dash convention.
