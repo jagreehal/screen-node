@@ -325,10 +325,11 @@ function hostCommandFor(cmd: string, args: string[], route: Route, frozen: boole
 }
 
 /**
- * Every plan-producing command reduces to one of three containment models. The explicit
- * subcommands (`install`/`add`/`run`/`shell`) and the transparent `sandbox <npm|pnpm|yarn|
- * npx|…>` pass-through all resolve here, so risk-checking and planning happen once, in one
- * place, instead of being re-derived per command. Bad input and unknown commands `fail()`.
+ * Every plan-producing command reduces to one of a few install models (install / add /
+ * remove / update / audit / run). The explicit subcommands and the transparent
+ * `screen <npm|pnpm|yarn|bun|npx|bunx>` pass-through all resolve here, so risk-checking
+ * and planning happen once, in one place, instead of being re-derived per command. Bad
+ * input and unknown commands `fail()`.
  */
 function resolveRoute(cmd: string, args: string[], facts: ProjectFacts): Route | undefined {
   switch (cmd) {
@@ -378,7 +379,7 @@ function resolveCommand(cmd: string, args: string[], facts: ProjectFacts): Route
     return { model: 'run', argv: pmScriptArgv(facts.pm, scriptName, args) };
   }
   if (facts.scripts[cmd]) return { model: 'run', argv: pmScriptArgv(facts.pm, cmd, args) };
-  fail(`unknown command '${cmd}'\n  try a command you know:  screen install · screen add zod · screen dev · screen x vite\n  or a screen command:     init · setup · allow · check · doctor · build · install · add · remove · script · run · x · shell`);
+  fail(`unknown command '${cmd}'\n  try a command you know:  screen install · screen add zod · screen dev · screen x vite\n  or a screen command:     init · setup · allow · check · doctor · install · add · remove · script · run · x`);
 }
 
 /**
