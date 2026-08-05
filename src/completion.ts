@@ -24,7 +24,7 @@ export const SCREEN_COMMANDS = [
 export const GLOBAL_FLAGS = [
   '--config', '--env', '--env-from', '--frozen',
   '--fail-on-source-writes', '--risk', '--fail-on-risk',
-  '--dry-run', '--min-release-age', '--allow-recent', '--deep', '--fail-on-advisory',
+  '--dry-run', '--min-release-age', '--allow-recent', '--deep', '--fail-on-advisory', '--fail-on-degraded',
   '--allow-deprecated', '--allow-all-builds', '--allow-build-hosts', '--no-update-check', '--json',
 ] as const;
 

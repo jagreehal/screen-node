@@ -14,6 +14,7 @@ const result = (over: Partial<PreflightResult> = {}): PreflightResult => ({
   advisoryHits: [],
   knownBadHits: [],
   checkedCount: 0,
+  degraded: [],
   ...over,
 });
 
@@ -23,6 +24,7 @@ const ap = (over: Partial<ActivePolicy> = {}): ActivePolicy => ({
   failOnAdvisory: false,
   failOnDeprecated: false,
   failOnRisk: false,
+  failOnDegraded: false,
   deep: false,
   policy: { riskHints: true, thorough: false, minReleaseAgeDays: 0, releaseAgeExclude: [], deep: false, advisories: false },
   ...over,
@@ -64,6 +66,16 @@ describe('blockExit, the decision that lets a bad dependency land or not', () =>
     expect(blockExit(r, ap({ failOnRisk: false }))).toBeUndefined();
     expect(blockExit(r, ap({ failOnRisk: true, riskHints: true }))).toBe(1);
     expect(blockExit(r, ap({ failOnRisk: true, riskHints: false }))).toBeUndefined(); // --risk off suppresses
+  });
+
+  // The fail-CLOSED opt-in. A gate that never ran produces no findings, so every check above passes a
+  // degraded result by default — which is exactly how a network outage silently disables the malware
+  // gate. --fail-on-degraded is the only thing standing between "no findings" and "nothing was checked".
+  it('blocks a gate that could not run only under --fail-on-degraded', () => {
+    const r = result({ degraded: ['registry resolve'] });
+    expect(blockExit(r, ap())).toBeUndefined(); // default: fail open, an OSV outage can't wedge installs
+    expect(blockExit(r, ap({ failOnDegraded: true }))).toBe(1);
+    expect(blockExit(result(), ap({ failOnDegraded: true }))).toBeUndefined(); // gates ran, found nothing
   });
 });
 

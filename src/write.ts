@@ -8,6 +8,9 @@ import { log } from './log.js';
 import { writeActionLine } from './mode.js';
 import { detectProjectMode, hostPlatform } from './native-deps.js';
 import { argvRunsPnpm, findPendingBuilds, planBuildApproval, promptBuildApprovals, renderApproveBuildsCommand, writeBuildApprovals } from './build-approval.js';
+import { collectTrustCandidates, explainRejection, partitionTrust } from './default-trust.js';
+import { createAdvisoryClient } from './advisory.js';
+import { createRegistryClient, readAllPackagesFromLockfile } from './risk.js';
 import { frozenInstallArgv, lockfileName, pmArgv, pmAuditFixArgv, pmAuditSignaturesArgv, pmUpdateArgv } from './package-manager.js';
 import type { ProjectFacts } from './project.js';
 import { renderSandboxRetry } from './retry.js';
@@ -93,6 +96,41 @@ function runNative(argv: string[], cwd: string, globals: Globals, action: string
 }
 
 /**
+ * Run the pending build scripts through the default-trust floor, returning what still needs a human.
+ *
+ * Deliberately quiet on success: an auto-approval is a `debug` line, not an `info` one. A floor that
+ * announces itself every install is just the prompt again in a costume, and "security is invisible
+ * until it needs you" means the clean path says nothing. A CURATED package that was held back does
+ * get a line, because the user expects those to sail through and the reason (a malware advisory, a
+ * version too fresh) is exactly the signal worth surfacing.
+ */
+async function applyDefaultTrust(ctx: WriteContext, pending: string[]): Promise<{ pending: string[]; autoApproved: string[] }> {
+  if (!pending.length || !ctx.config.install.defaultTrust) return { pending, autoApproved: [] };
+
+  const candidates = await collectTrustCandidates(pending, {
+    // pnpm, not `ctx.facts.pm`: this path only runs behind `argvRunsPnpm`, and facts.pm is the pm
+    // probed BEFORE the install — in a fresh repo there was no lockfile to probe, so it can name a
+    // different pm and send us looking for a package-lock.json that will never exist. Same reason
+    // `argvRunsPnpm` keys off the command rather than the repo.
+    lockfilePackages: () => readAllPackagesFromLockfile(ctx.project.rootDir, 'pnpm'),
+    registry: createRegistryClient(),
+    advisory: createAdvisoryClient(),
+  });
+  const { trusted, remaining } = partitionTrust(candidates, {
+    now: new Date(),
+    minAgeMs: ctx.config.install.minReleaseAgeDays * 24 * 60 * 60 * 1000,
+  });
+
+  for (const v of remaining) {
+    const why = v.reason && explainRejection(v.reason);
+    if (why) log.warn(`default trust: ${v.name} is a known native-build package but still needs your decision, ${why}`);
+  }
+  if (trusted.length) log.debug(`default trust: ${trusted.join(', ')} cleared provenance, advisory, and cooling checks`);
+
+  return { pending: remaining.map((v) => v.name), autoApproved: trusted };
+}
+
+/**
  * Post-install build-approval resolution for the native write path (pnpm refuses unknown dependency
  * build scripts and records them under `allowBuilds:` in pnpm-workspace.yaml as undecided). Resolve
  * via `--allow-all-builds`, an interactive prompt, or one-line guidance, then a re-run. Keys off the pm
@@ -101,8 +139,21 @@ function runNative(argv: string[], cwd: string, globals: Globals, action: string
  */
 async function resolveBuildApprovals(ctx: WriteContext, argv: string[], installCode: number): Promise<'rerun' | { block: number } | 'ok'> {
   const isPnpmInstall = argvRunsPnpm(argv) && classifyCommand(argv) !== 'other';
-  const pending = isPnpmInstall ? findPendingBuilds(ctx.project.rootDir) : [];
+  const allPending = isPnpmInstall ? findPendingBuilds(ctx.project.rootDir) : [];
   const canPrompt = Boolean(process.stdin.isTTY && process.stdout.isTTY) && !ctx.globals.json && !ctx.globals.dryRun;
+
+  // Default-trust floor: clear the curated native-build workhorses before asking, so the prompt only
+  // carries decisions a human can actually add judgement to. Runs BEFORE --allow-all-builds is
+  // considered, because it changes what the prompt would even contain.
+  const { pending, autoApproved } = await applyDefaultTrust(ctx, allPending);
+  if (autoApproved.length && !pending.length) {
+    // Everything pending was vouched for: write the approvals and re-run with no question asked.
+    writeBuildApprovals(ctx.project.rootDir, new Map(autoApproved.map((n) => [n, true])));
+    log.debug(`default trust: approved ${autoApproved.join(', ')}; re-running install`);
+    return 'rerun';
+  }
+  if (autoApproved.length) writeBuildApprovals(ctx.project.rootDir, new Map(autoApproved.map((n) => [n, true])));
+
   const decision = planBuildApproval({ pendingCount: pending.length, isPnpmInstall, allowAll: ctx.globals.allowAllBuilds, canPrompt });
   const where = 'on the host';
   switch (decision) {

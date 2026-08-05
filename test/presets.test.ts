@@ -15,7 +15,7 @@ describe('presets', () => {
 
   it('strict is the most locked-down', () => {
     const s = presetConfig('strict');
-    expect(s.install).toEqual({ network: 'allowlist', frozen: true, riskHints: 'thorough', failOnRisk: false, minReleaseAgeDays: 7, minReleaseAgeExclude: [], failOnAdvisory: true, malwareFeeds: [], failOnDeprecated: true, cache: true, canaries: true, failOnSourceWrites: true, safeInstall: true, pinExact: false });
+    expect(s.install).toEqual({ network: 'allowlist', frozen: true, riskHints: 'thorough', failOnRisk: false, minReleaseAgeDays: 7, minReleaseAgeExclude: [], failOnAdvisory: true, failOnDegraded: true, defaultTrust: false, malwareFeeds: [], failOnDeprecated: true, cache: true, canaries: true, failOnSourceWrites: true, safeInstall: true, pinExact: false });
     expect(s.run.network).toBe('none');
     expect(s.grants['ssh-agent']).toBe(false);
   });
@@ -34,6 +34,24 @@ describe('presets', () => {
     expect(presetConfig('strict').install.failOnAdvisory).toBe(true);
     for (const name of ['balanced', 'vibe', 'agent', 'trusted'] as const) {
       expect(presetConfig(name).install.failOnAdvisory).toBe(false);
+    }
+  });
+
+  // Everywhere else the gates fail OPEN so a registry/OSV outage can't wedge installs. Only strict
+  // takes the availability hit to guarantee "no findings" means the checks actually ran.
+  it('only strict fails closed when a gate cannot run', () => {
+    expect(presetConfig('strict').install.failOnDegraded).toBe(true);
+    for (const name of ['balanced', 'vibe', 'agent', 'trusted'] as const) {
+      expect(presetConfig(name).install.failOnDegraded).toBe(false);
+    }
+  });
+
+  // The default-trust floor removes a keystroke on curated native-build packages. Strict is the
+  // preset that wants a human on every build script, even the boring ones.
+  it('only strict opts out of the default-trust floor', () => {
+    expect(presetConfig('strict').install.defaultTrust).toBe(false);
+    for (const name of ['balanced', 'vibe', 'agent', 'trusted'] as const) {
+      expect(presetConfig(name).install.defaultTrust).toBe(true);
     }
   });
 

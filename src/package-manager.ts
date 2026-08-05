@@ -80,6 +80,10 @@ export function resolvePackageManager(cwd: string): PackageManager {
   const fromManifest = packageManagerFromManifest(cwd);
   if (fromManifest) return fromManifest;
   if (existsSync(path.join(cwd, 'pnpm-lock.yaml'))) return 'pnpm';
+  // Nub's explicit identity writes lock.yaml in pnpm v9 format. Only its plugin adapter enables this
+  // interpretation: ordinary screen commands must not mistake a Nub project for a pnpm project and
+  // then run the wrong installer.
+  if (process.env.SCREEN_NUB_PLUGIN === '1' && existsSync(path.join(cwd, 'lock.yaml'))) return 'pnpm';
   if (existsSync(path.join(cwd, 'yarn.lock'))) return 'yarn';
   if (BUN_LOCKFILES.some((f) => existsSync(path.join(cwd, f)))) return 'bun';
   return 'npm';
@@ -90,8 +94,22 @@ export function lockfileName(pm: PackageManager): string {
   return LOCKFILES[pm];
 }
 
+/** Effective lockfile for reads, including Nub identity while running through `nub-screen`. */
+export function projectLockfileName(cwd: string, pm: PackageManager): string {
+  if (
+    process.env.SCREEN_NUB_PLUGIN === '1'
+    && pm === 'pnpm'
+    && !existsSync(path.join(cwd, LOCKFILES.pnpm))
+    && existsSync(path.join(cwd, 'lock.yaml'))
+  ) {
+    return 'lock.yaml';
+  }
+  return lockfileName(pm);
+}
+
 /** Whether a committed lockfile is present — accepts either bun spelling. */
 export function lockfilePresent(cwd: string, pm: PackageManager): boolean {
+  if (projectLockfileName(cwd, pm) === 'lock.yaml') return true;
   return lockfileCandidates(pm).some((f) => existsSync(path.join(cwd, f)));
 }
 

@@ -27,6 +27,8 @@ export interface Globals {
   interactive: boolean;
   /** Block on a known-malware advisory (overrides config). */
   failOnAdvisory?: boolean;
+  /** Block when a gate couldn't run at all, rather than failing open (overrides config). */
+  failOnDegraded?: boolean;
   /** Allow installing a maintainer-deprecated version for this run (overrides the default block). */
   failOnDeprecated?: boolean;
   /** Plant canary honeytokens and watch egress for them (overrides install.canaries). */

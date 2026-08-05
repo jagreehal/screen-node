@@ -76,3 +76,4 @@ export {
 } from './receipt.js';
 export { signVerifyReceipt, runVerifyReceipt, runKeygen, runAuditVerify, readSigningKey, verifyConfig, runVerify, type VerifyResult, type VerifyReceiptPayload } from './verify.js';
 export { makeCanary, scanCanaryLog, canaryMarkers, type Canary, type CanaryHit } from './canary.js';
+export { NUB_PLUGIN_HELP, nubPluginCommand, nubPluginDecision, type NubPluginDecision } from './nub-plugin.js';

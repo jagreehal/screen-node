@@ -14,7 +14,7 @@ import { runDoctor } from './doctor.js';
 import { findPendingBuilds, writeBuildApprovals } from './build-approval.js';
 import { ensureLocalConfigIgnored, runInit } from './init.js';
 import { log } from './log.js';
-import { lockfileName, pmExecArgv, pmScriptArgv, resolvePackageManager, type PackageManager } from './package-manager.js';
+import { lockfileName, pmExecArgv, pmScriptArgv, projectLockfileName, resolvePackageManager, type PackageManager } from './package-manager.js';
 import { probeProject, readManifestDependencies, readWorkspaceDependencies, type ProjectFacts } from './project.js';
 import { foldBinLeader, leaderForBin } from './native.js';
 import { allowHosts } from './registry.js';
@@ -24,6 +24,7 @@ import { runPreflight, suggestPins, type PinSuggestion, type PreflightPolicy, ty
 import { runScan } from './scan.js';
 import { runDelta } from './delta.js';
 import { feedCacheDir, loadKnownBad, PROJECT_ADVISORY_NAME, updateFeeds, type KnownBadHit } from './known-bad.js';
+import { isCacheableFrozenInstall, isVetted, lockfileFingerprint, recordVetted } from './vetted.js';
 import { scanSecrets, type SecretFinding } from './secrets.js';
 import { formatSafeReceipt, freshSubstitutions, incidentallyPinned, rewriteAddArgs, type Substitution } from './safe-install.js';
 import { applyUpgrades, classifyUpgrades, defaultNcuRunner, mergeProposals, NCU_SPEC, ncuPasses, parseUpgrades, readDeclaredRanges, renderUpgradeTable, upgradeTargets, type NcuRunner, type ProposedUpgrade, type UpgradePolicy, type UpgradeTarget } from './upgrade.js';
@@ -170,6 +171,8 @@ Globals (before the command):
                        read from the lockfile (npm + pnpm + yarn), not just direct deps
   --fail-on-advisory   BLOCK when a version is flagged as malware in the OSV advisory DB
                        (the strict preset sets this)
+  --fail-on-degraded   BLOCK when a registry or OSV gate could not run instead of proceeding
+                       unscreened (the strict preset sets this)
   --allow-deprecated   allow installing a maintainer-DEPRECATED version (off by default:
                        deprecated versions are abandoned and a supply-chain risk, so they
                        are blocked). Rides on risk hints, so --risk off also disables it.
@@ -243,6 +246,7 @@ function parse(argv: string[]): { globals: Globals; cmd?: string; args: string[]
     else if (a === '--deep') globals.deep = true;
     else if (a === '--interactive' || a === '--prompt') globals.interactive = true;
     else if (a === '--fail-on-advisory') globals.failOnAdvisory = true;
+    else if (a === '--fail-on-degraded') globals.failOnDegraded = true;
     else if (a === '--allow-deprecated') globals.failOnDeprecated = false;
     else if (a === '--canaries') globals.canaries = true;
     else if (a === '--no-canaries') globals.canaries = false;
@@ -726,6 +730,21 @@ function logKnownBadHits(hits: KnownBadHit[]): void {
   log.error(lines.join('\n'));
 }
 
+/**
+ * Report gates that could not run. Always say it (a silently-skipped malware check is the finding, and
+ * a clean-looking install that never checked anything is the exact thing worth knowing); the SEVERITY
+ * tracks whether the user opted into blocking on it. Without `--fail-on-degraded` this is a warning and
+ * the install proceeds, which is the deliberate availability tradeoff.
+ */
+function logDegraded(degraded: string[], failOnDegraded: boolean): void {
+  if (!degraded.length) return;
+  const what = `${degraded.join(', ')} could not run (registry or OSV unreachable), so those gates did NOT screen this install`;
+  if (!failOnDegraded) {
+    log.warn(`${what}. Pass --fail-on-degraded (or set install.failOnDegraded) to block instead of proceeding unscreened.`);
+    return;
+  }
+  log.error([`blocked by --fail-on-degraded, ${what}.`, 'options:', '  • retry once the network recovers', '  • drop --fail-on-degraded to accept an unscreened install'].join('\n'));
+}
 
 /**
  * `forceCheck` is set by the explicit `check`/`preflight` commands: they ALWAYS query the OSV
@@ -741,6 +760,7 @@ function resolvePolicy(globals: Globals, config: SandboxConfig, route: Route, fo
   const failOnAdvisory = globals.failOnAdvisory ?? config.install.failOnAdvisory;
   const failOnDeprecated = globals.failOnDeprecated ?? config.install.failOnDeprecated;
   const failOnRisk = globals.failOnRisk ?? config.install.failOnRisk;
+  const failOnDegraded = globals.failOnDegraded ?? config.install.failOnDegraded;
   const deep = globals.deep && (route.model === 'install' || route.model === 'add' || route.model === 'update' || route.model === 'auditFix');
   return {
     riskHints,
@@ -748,6 +768,7 @@ function resolvePolicy(globals: Globals, config: SandboxConfig, route: Route, fo
     failOnAdvisory,
     failOnDeprecated,
     failOnRisk,
+    failOnDegraded,
     deep,
     policy: {
       riskHints,
@@ -836,11 +857,28 @@ async function preflightRoute(globals: Globals, config: SandboxConfig, facts: Pr
   if (nothing && !wantSafe) return { route };
 
   const targets = riskTargetsForRoute(route, gateFacts);
+
+  // Frozen installs resolve exactly what the lockfile pins, so a re-run asks OSV the identical
+  // questions about the identical versions. When this exact lockfile was found clean recently under
+  // these exact gates, skip the advisory round-trip (the dominant cost, one request per package, and
+  // one per TREE entry under --deep). Only advisories are skipped: the age and deprecation gates read
+  // the packument we fetch anyway, and deprecation can newly appear on an unchanged lockfile.
+  const frozen = isCacheableFrozenInstall(
+    route.model,
+    route.model === 'install' && route.frozen,
+    globals.frozen,
+    config.install.frozen,
+  );
+  const fingerprint = frozen ? lockfileFingerprint(facts.cwd, pm, { advisories: ap.policy.advisories, deep: ap.policy.deep, minReleaseAgeDays: ap.policy.minReleaseAgeDays, knownBadCount: knownBad.length }) : undefined;
+  const cached = ap.policy.advisories && isVetted(fingerprint, new Date());
+  const policy = cached ? { ...ap.policy, advisories: false } : ap.policy;
+  if (cached) log.debug('frozen install: lockfile unchanged since a clean advisory check, skipping the OSV round-trip');
+
   // Run the gate preflight only when there's something to gate. With nothing to gate but safe-install to
   // do (e.g. `--risk off` with the default safeInstall on), skip straight to the substitution below.
   let result: PreflightResult | undefined;
   if (!nothing) {
-    result = await runPreflight(targets, ap.policy, { pm, cwd: facts.cwd, knownBad });
+    result = await runPreflight(targets, policy, { pm, cwd: facts.cwd, knownBad });
     logDeep(ap, result, pm);
     // Blocklist / malware-feed match — an explicit team decision, so it blocks ahead of everything.
     if (result.knownBadHits.length) {
@@ -864,6 +902,10 @@ async function preflightRoute(globals: Globals, config: SandboxConfig, facts: Pr
     // Deprecated version — its own gate, blocked by default.
     const depExit = logDeprecatedGate(deprecatedHints(result), ap.failOnDeprecated);
     if (depExit !== undefined) return { block: depExit };
+    // Last: a gate that never ran. Checked after the real findings so a genuine hit is always the
+    // headline, and reported even when it doesn't block so a clean line is never mistaken for a pass.
+    logDegraded(result.degraded, ap.failOnDegraded);
+    if (ap.failOnDegraded && result.degraded.length) return { block: 1 };
   }
 
   // Safe install: isolated from the risk-hint DISPLAY toggle. Reuse the gate's hints only when it ran
@@ -887,6 +929,15 @@ async function preflightRoute(globals: Globals, config: SandboxConfig, facts: Pr
     // the user already opted into pinExact. Name them in the receipt so it isn't a silent surprise.
     log.info(formatSafeReceipt(subs, config.install.pinExact ? [] : incidentallyPinned(route.pkgs, subs)));
   }
+  // Bank the verdict for the next frozen install of this lockfile, but ONLY when the advisory check
+  // came back completely empty. A non-blocking hit (a moderate CVE, say) still gets REPORTED every
+  // run, and skipping the lookup would make that report vanish on the second install — a findings
+  // regression dressed up as a speedup. No hits means nothing to lose by not asking again.
+  // Also guarded on `!cached` so a cached pass can't refresh its own timestamp into immortality, and
+  // on an empty `degraded` so a verdict reached during an outage is never recorded as clean.
+  if (!cached && result && ap.policy.advisories && !result.degraded.length && !result.advisoryHits.length) {
+    recordVetted(fingerprint, new Date());
+  }
   return { route: rewritten };
 }
 
@@ -901,6 +952,8 @@ function renderPreflightJson(result: PreflightResult, suggestions: PinSuggestion
       ageViolations: result.ageViolations.map((v) => ({ name: v.name, version: v.version, publishedAt: v.publishedAt.toISOString(), ageDays: days(v.ageMs) })),
       advisoryHits: result.advisoryHits,
       knownBadHits: result.knownBadHits,
+      // Surfaced in JSON too: an agent reading `blocked: false` needs to know whether the gates ran.
+      degraded: result.degraded,
       deprecations: deprecatedHints(result).map((h) => ({ name: h.package, version: h.version, reason: h.code === 'deprecated' ? h.detail.deprecated : h.message })),
       suggestions: suggestions.map((s) => ({ name: s.name, version: s.version, pin: `screen ${pm} add ${s.name}@${s.version}`, ageDays: days(s.ageMs) })),
     },
@@ -945,6 +998,7 @@ async function runPreflightCommand(globals: Globals, config: SandboxConfig, fact
   if (result.advisoryHits.length) logAdvisoryHits(result.advisoryHits);
   logDeprecatedGate(deprecatedHints(result), ap.failOnDeprecated);
   if (ap.riskHints) logRiskHints(targets, result.hints, { contained: false, pm });
+  logDegraded(result.degraded, ap.failOnDegraded);
 
   if (exit) log.error('preflight: would BLOCK this install, resolve the findings above, or re-run with an override flag');
   else log.info('preflight: no blocking findings, safe to install');
@@ -1016,7 +1070,7 @@ function readBaseLockfile(rootDir: string, pm: PackageManager, baseRef: string, 
   try {
     const text = baseFile
       ? readFileSync(baseFile, 'utf8')
-      : execFileSync('git', ['show', `${baseRef}:${lockfileName(pm)}`], { cwd: rootDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
+      : execFileSync('git', ['show', `${baseRef}:${projectLockfileName(rootDir, pm)}`], { cwd: rootDir, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
     return parseLockfilePackages(text, pm);
   } catch {
     return undefined; // missing ref/file/git → caller treats every head package as changed (gate-all)
@@ -1189,11 +1243,12 @@ async function runUpgradeCommand(
   const suggestions = result.ageViolations.length ? await suggestPins(result.ageViolations, cooldownDays) : [];
 
   if (globals.json) {
-    console.log(JSON.stringify({ cooldownDays, target: ua.target, blocked, upgrades: rows.map((r) => ({ name: r.name, from: r.from, to: r.to, gate: r.gate })) }, null, 2));
+    console.log(JSON.stringify({ cooldownDays, target: ua.target, blocked, degraded: result.degraded, upgrades: rows.map((r) => ({ name: r.name, from: r.from, to: r.to, gate: r.gate })) }, null, 2));
     return blocked ? 1 : 0;
   }
 
   log.info(`upgrade: ${rows.length} package(s) can move:\n${renderUpgradeTable(rows)}`);
+  logDegraded(result.degraded, ap.failOnDegraded);
 
   if (blocked) {
     if (result.knownBadHits.length) logKnownBadHits(result.knownBadHits);

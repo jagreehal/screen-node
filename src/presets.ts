@@ -23,7 +23,7 @@ export const PRESETS: Record<PresetName, Preset> = {
   strict: {
     name: 'strict',
     label: 'Strict',
-    hint: 'frozen install, 7-day release-age gate, thorough risk checks, block known malware, registry-only egress',
+    hint: 'frozen install, 7-day release-age gate, thorough risk checks, block known malware, fail closed on an outage, registry-only egress',
     // Defaults are already registry-only + no grants + no run network. Strict pins the
     // reproducible (frozen) install, turns on the release-age gate (refuse versions published
     // <7 days ago — the control the 2026-06-04 incident named most effective), runs the full
@@ -32,7 +32,12 @@ export const PRESETS: Record<PresetName, Preset> = {
     // honeytokens so a credential-theft attempt is caught in the act, not just blocked anonymously.
     // failOnSourceWrites on: frozen already gives a read-only tree on npm/yarn/bun; this catches the
     // pnpm-writable-root case, so a strict install that edits your source fails instead of passing quietly.
-    config: { install: { frozen: true, minReleaseAgeDays: 7, failOnAdvisory: true, riskHints: 'thorough', canaries: true, failOnSourceWrites: true } },
+    // failOnDegraded on: everywhere else the gates fail OPEN so an OSV outage can't wedge installs, which
+    // also means anyone who can break that connection turns the malware gate off. Strict is the preset
+    // that would rather stop than install unscreened, so it takes the availability hit.
+    // defaultTrust off: the floor is a convenience that skips a human for curated packages. Strict is
+    // the preset that wants the human on every build script, even the boring ones.
+    config: { install: { frozen: true, minReleaseAgeDays: 7, failOnAdvisory: true, failOnDegraded: true, defaultTrust: false, riskHints: 'thorough', canaries: true, failOnSourceWrites: true } },
   },
   balanced: {
     name: 'balanced',

@@ -16,7 +16,7 @@ const pkg = JSON.parse(readFileSync(path.join(root, 'package.json'), 'utf8')) as
 
 const LEADERS = ['npm', 'pnpm', 'yarn', 'bun', 'npx', 'bunx'] as const;
 const SHORT: Record<(typeof LEADERS)[number], string> = { npm: 'snpm', pnpm: 'spnpm', yarn: 'syarn', bun: 'sbun', npx: 'snpx', bunx: 'sbunx' };
-const CLI_BINS = new Set(['screen']);
+const CLI_BINS = new Set(['screen', 'nub-screen']);
 const pmBins = Object.entries(pkg.bin).filter(([name]) => !CLI_BINS.has(name));
 
 describe('per-PM binary parity (package.json bin ↔ leaderForBin ↔ bin/ launchers)', () => {
@@ -41,5 +41,6 @@ describe('per-PM binary parity (package.json bin ↔ leaderForBin ↔ bin/ launc
 
   it('does not treat the CLI bin as a PM front-end', () => {
     expect(leaderForBin('screen')).toBeUndefined();
+    expect(leaderForBin('nub-screen')).toBeUndefined();
   });
 });

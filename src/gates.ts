@@ -14,6 +14,8 @@ export interface ActivePolicy {
   failOnAdvisory: boolean;
   failOnDeprecated: boolean;
   failOnRisk: boolean;
+  /** Block when a gate couldn't run at all (registry/OSV outage), instead of failing open silently. */
+  failOnDegraded: boolean;
   deep: boolean;
   policy: PreflightPolicy;
 }
@@ -35,6 +37,11 @@ export function nothingToCheck(ap: ActivePolicy): boolean {
  * versions block only when `failOnDeprecated`; any risk hint blocks only under `--fail-on-risk`. Returns
  * undefined when nothing blocks. This is the one function that decides whether a bad dependency lands, so
  * it lives here with direct unit coverage rather than buried in the CLI.
+ *
+ * `failOnDegraded` is the fail-CLOSED opt-in, checked last: the gates above only block on a finding, so a
+ * gate that never ran produces no finding and passes. That asymmetry is deliberate by default (an OSV
+ * outage shouldn't wedge every install) but it means anyone who can break the connection to the registry
+ * or api.osv.dev can turn the malware gate off. Opting in trades availability for that guarantee.
  */
 export function blockExit(result: PreflightResult, ap: ActivePolicy): number | undefined {
   if (result.knownBadHits.length) return 1;
@@ -42,5 +49,6 @@ export function blockExit(result: PreflightResult, ap: ActivePolicy): number | u
   if (result.advisoryHits.some((h) => h.malware)) return 1;
   if (ap.failOnDeprecated && deprecatedHints(result).length) return 1;
   if (ap.riskHints && result.hints.length && ap.failOnRisk) return 1;
+  if (ap.failOnDegraded && result.degraded.length) return 1;
   return undefined;
 }

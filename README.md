@@ -1,28 +1,108 @@
 # screen-node
 
-**Screen your npm/pnpm/yarn/bun dependencies before they install.** `screen-node`
-checks the exact versions an install is about to fetch against known-bad advisories
-(OSV malware, your own feeds), typosquats, and the release-age worm window, then
-installs natively on your host.
+**Screen npm, pnpm, yarn, and bun dependencies before they install.** `screen-node`
+checks the versions your package manager will fetch for known-bad packages,
+typosquats, release age, and deprecation. It then installs them on your host with
+the selected package manager.
 
-It is a **fast filter, not a cage.** Native installs run lifecycle scripts on your
-host, so the gates are heuristics that catch known-bad dependencies early, not a
-security boundary. When you need a real boundary, run your work inside a container
-(see [sandbox-claude](https://github.com/jagreehal/sandbox-claude)).
+It is a **fast filter, not a cage.** `screen` names the action: inspect dependencies
+before installation and report known risks. Lifecycle scripts run on your
+host. Isolate untrusted installs with a security boundary such as
+[sandbox-claude](https://github.com/jagreehal/sandbox-claude).
 
-## Install
+## Install and use
 
 ```bash
 npm i -g @jagreehal/screen-node
 ```
 
-## How it works
+The package installs aliases that screen package-manager commands. Add `s` for
+screen:
 
-Every install runs the same path: resolve the exact versions, run the gates, and
-only then fetch and install natively. The output is quiet when nothing is wrong and
-loud when something is. Three real sessions show the whole behavior.
+```bash
+snpm install            # npm install
+spnpm add zod           # pnpm add zod
+syarn add react         # yarn add react
+sbun add hono           # bun add hono
+snpx create-vite app    # npx create-vite app
+sbunx vite              # bunx vite
+```
 
-**A clean package says almost nothing.** This is the common case.
+You can use the `screen` command with package-manager vocabulary:
+
+```bash
+screen install
+screen add zod
+screen pnpm add zod
+```
+
+## Use with Nub
+
+The same package installs a `nub-screen` plugin executable. Nub resolves it when
+you put `screen` after `nub`:
+
+```bash
+nub screen check zod
+nub screen scan
+nub screen delta --base origin/main
+nub screen secrets
+```
+
+Nub checks its resolved graph during installation. It handles OSV malware,
+release-age policy, tarball integrity, and lifecycle-script control. screen-node
+adds custom malware feeds, typosquat and registry-risk review, dependency-delta
+checks, secret scanning, and signed policy verification around that install.
+
+Nub keeps control of installation, execution, and build approval. Review a new
+dependency with screen-node, then add it with Nub:
+
+```bash
+nub screen check zod && nub add zod
+```
+
+Nub dispatches built-ins first. Commands such as `nub screen add` stop with guidance
+to use `nub add`. This prevents a Nub-looking command from running another package
+manager.
+
+Run the plugin executable directly if your Nub build predates plugin resolution:
+
+```bash
+nub-screen check zod
+```
+
+## What you get
+
+- Configured malware feeds and project advisories block known-bad packages before
+  the package manager fetches them. `screen check` queries OSV. Use the `strict`
+  preset or `--fail-on-advisory` to query OSV and block reported malware during an
+  install.
+- The release-age gate holds back fresh versions during the worm window. Safe
+  install can choose the newest older release and show you the substitution.
+- Typosquat and deprecation checks flag suspicious or abandoned packages.
+- Clean installs stay quiet. Findings name the package, explain the risk, and give
+  you a command or config choice.
+
+## Check before you install
+
+Review packages without fetching or installing them:
+
+```bash
+screen check zod
+screen check express lodash@4
+screen check npm install zod
+```
+
+Run `screen check` without a package name to inspect dependencies from this
+project and its workspaces:
+
+```bash
+screen check
+screen check ./apps/web/package.json
+```
+
+## What you see
+
+A clean check prints a short result:
 
 ```console
 $ screen check zod
@@ -30,8 +110,7 @@ screen: checked 1 package for registry risk hints
 screen: preflight: no blocking findings, safe to install
 ```
 
-**A known-bad version is blocked, with the reason and your options.** Nothing is
-fetched. You decide; the override is explicit.
+A known-bad version stops before the package manager fetches it:
 
 ```console
 $ screen check request
@@ -44,10 +123,7 @@ options:
 screen: ✖ preflight: would BLOCK this install, resolve the findings above, or re-run with an override flag
 ```
 
-**A brand-new release is swapped for the next good version.** When the latest
-version sits inside the worm window (published in the last few days, before anyone
-has vetted it), screen pins the newest release that has already aged past the
-window and tells you what it changed and how to override.
+Safe install can replace a release inside the worm window with an older version:
 
 ```console
 $ screen add vite
@@ -56,76 +132,35 @@ screen: safe install changed this add:
   take the newest version instead: add --allow-recent vite before the command
 ```
 
-## Screen a new dependency
-
-Same keystrokes as your package manager, with an `s` prefix (`s` = screen):
+## Maintain an existing project
 
 ```bash
-snpm install            # npm install, screened
-spnpm add zod           # pnpm add zod, screened
-syarn add react         # yarn add react, screened
-sbun add hono           # bun add hono, screened
-snpx create-vite app    # npx, screened
+screen scan                       # re-check installed versions for new malware reports
+screen delta --base origin/main   # gate dependency changes in a pull request
+screen upgrade --write            # update ranges after screening proposed versions
+screen secrets                    # fail when the repository contains a credential
+screen verify                     # verify committed screen config for CI
+screen doctor                     # check config, package manager, registry, and Node
 ```
 
-Or review first and install nothing:
+`screen upgrade` applies the release-age gate to proposed versions and can select
+an older release that has cleared the configured window.
 
-```bash
-screen check zod        # vet one package, print every finding
-```
+## Checks
 
-## Audit an existing project
+- **Known-bad dependencies:** configured feeds and project advisories block the
+  install. `screen check` queries OSV; `strict` and `--fail-on-advisory` add that
+  OSV gate to installs.
+- **Release age:** versions inside the configured worm window block or receive a
+  safe-install substitution.
+- **Package risk:** typosquats and registry risk signals produce specific findings.
+- **Deprecation:** maintainer-deprecated versions block by default.
 
-`screen check` with no package name reads your `package.json` (every workspace
-package) and runs the declared dependencies through the same gates. Nothing
-installs.
-
-```bash
-screen check                            # this project's deps, workspace-aware
-screen check ./apps/web/package.json    # one manifest
-```
-
-`screen upgrade` reuses the next-good-version logic: it proposes newer ranges, gates
-every proposal, and pins a vetted release in place of anything still inside the worm
-window.
-
-Maintenance and CI gates:
-
-```bash
-screen scan                       # re-flag installed deps that turned malicious since install
-screen delta --base origin/main   # gate only the dependency changes a PR introduces
-screen upgrade --write            # move ranges to newer vetted versions, then install
-screen secrets                    # fail if a credential is committed
-screen verify                     # CI gate: a real config is committed, no personal layer loosened it
-screen doctor                     # check config, package manager, registry, Node state
-```
-
-## What it screens
-
-- **Known-bad dependencies** (OSV malware advisories plus your own feeds): hard block.
-- **Typosquats** of popular packages.
-- **The release-age worm window:** brand-new versions that have not aged, with a
-  safe-install substitution to a vetted older release.
-- **Deprecations.**
-
-Full command reference: [`docs/reference.md`](docs/reference.md) (or run `screen
-help`). Agent workflows: [`skills/screen-install`](skills/screen-install/SKILL.md)
-to add a dependency, [`skills/screen-audit`](skills/screen-audit/SKILL.md) to audit
-and upgrade an existing project.
-
-## Status
-
-`screen-node` is the gate engine from
-[`@jagreehal/sandbox-node`](https://github.com/jagreehal/sandbox-node), repackaged
-as a standalone, container-free tool. The inherited Docker/container subsystem
-(image build, egress proxy, firewall, devcontainer) is **removed**: installs run
-natively on the host, the command and output are branded `screen`, and the gates
-are heuristics, not a boundary. See [`SECURITY.md`](SECURITY.md) for the threat
-model and [`AGENTS.md`](AGENTS.md) for repo orientation.
-
-The rename to `screen` is complete: env vars use the `SCREEN_*` prefix, on-disk
-paths use the `screen` name (`screen.advisories.json`, the `.screen` agent dir),
-and the unit plus integration suites pass.
+Full command reference: [`docs/reference.md`](docs/reference.md), or run `screen
+help`. Agent workflows: [`skills/screen-install`](skills/screen-install/SKILL.md)
+for adding dependencies and [`skills/screen-audit`](skills/screen-audit/SKILL.md)
+for auditing and upgrading projects. See [`SECURITY.md`](SECURITY.md) for the
+threat model.
 
 ## License
 

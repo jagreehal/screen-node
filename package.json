@@ -18,7 +18,8 @@
     "syarn": "./bin/yarn.mjs",
     "sbun": "./bin/bun.mjs",
     "snpx": "./bin/npx.mjs",
-    "sbunx": "./bin/bunx.mjs"
+    "sbunx": "./bin/bunx.mjs",
+    "nub-screen": "./bin/nub-screen.mjs"
   },
   "types": "./dist/index.d.mts",
   "exports": {
