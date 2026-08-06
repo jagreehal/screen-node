@@ -64,6 +64,18 @@ export const SandboxConfigSchema = z
         // Different axis from the age gate: "known bad" rather than "too new". Advisory lookups
         // run when riskHints is on; this turns a malware hit into a hard preflight failure.
         failOnAdvisory: z.boolean().default(false),
+        // Fail CLOSED when a gate can't run at all. Every registry/OSV lookup fails open by default so
+        // an outage can't wedge installs, but that means a broken connection to api.osv.dev silently
+        // disables the malware gate. Turning this on blocks the install instead, trading availability
+        // for the guarantee that "no findings" means "the checks actually ran".
+        failOnDegraded: z.boolean().default(false),
+        // Auto-approve install scripts for a short curated list of native-build packages (esbuild,
+        // sharp, better-sqlite3, ...) when the exact resolved version passes three checks: resolved
+        // from the registry, no malware advisory, and past a cooling window. Prompt fatigue is the
+        // top reason people disable a gate entirely, and a disabled gate screens nothing — this
+        // removes the keystroke on the answers that are always "yes" without widening what runs.
+        // Set false to decide every build script by hand (what `strict` does).
+        defaultTrust: z.boolean().default(true),
         // Extra known-malware FEEDS to augment OSV: a list of URLs (e.g. Aikido's public malware
         // database) fetched by `sandbox feeds update` and cached locally. Any package matched by a
         // feed ALWAYS blocks an install — feeds are an explicit team decision, not gated by
@@ -110,7 +122,7 @@ export const SandboxConfigSchema = z
         pinExact: z.boolean().default(false),
       })
       .strict()
-      .default({ network: 'allowlist', frozen: false, riskHints: 'basic', failOnRisk: false, minReleaseAgeDays: 0, minReleaseAgeExclude: [], failOnAdvisory: false, malwareFeeds: [], failOnDeprecated: true, cache: true, canaries: false, failOnSourceWrites: false, safeInstall: true, pinExact: false }),
+      .default({ network: 'allowlist', frozen: false, riskHints: 'basic', failOnRisk: false, minReleaseAgeDays: 0, minReleaseAgeExclude: [], failOnAdvisory: false, failOnDegraded: false, defaultTrust: true, malwareFeeds: [], failOnDeprecated: true, cache: true, canaries: false, failOnSourceWrites: false, safeInstall: true, pinExact: false }),
     egress: z
       .object({ allow: z.array(z.string()).default(['npmjs.org', 'npmjs.com']) })
       .strict()
@@ -296,7 +308,7 @@ function boundaryLooseningWarnings(eff: SandboxConfig, base: SandboxConfig): str
     if (extra.length) w.push(`grants.${key} added ${extra.join(', ')} beyond team config`);
   }
   if (!eff.install.frozen && base.install.frozen) w.push('install.frozen disabled (team config requires reproducible installs)');
-  for (const flag of ['failOnRisk', 'failOnAdvisory', 'failOnDeprecated', 'canaries'] as const) {
+  for (const flag of ['failOnRisk', 'failOnAdvisory', 'failOnDeprecated', 'failOnDegraded', 'canaries'] as const) {
     if (!eff.install[flag] && base.install[flag]) w.push(`install.${flag} disabled beyond team config`);
   }
   if (eff.install.minReleaseAgeDays < base.install.minReleaseAgeDays) w.push(`install.minReleaseAgeDays lowered to ${eff.install.minReleaseAgeDays} (team config: ${base.install.minReleaseAgeDays})`);

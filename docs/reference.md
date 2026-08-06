@@ -36,6 +36,25 @@ Same gated native path, fewer keystrokes (`s` = screen). Your real `npm`/`pnpm`/
 | `snpx` | `screen-npx` | npx, gated |
 | `sbunx` | `screen-bunx` | bunx, gated |
 
+## Nub plugin
+
+Installing `@jagreehal/screen-node` also installs a `nub-screen` executable. Nub's
+plugin resolver makes it available under `nub screen`:
+
+```bash
+nub screen check zod
+nub screen scan
+nub screen delta --base origin/main
+nub screen secrets
+nub screen verify --scan --secrets
+```
+
+The plugin exposes screen-node's review, policy, and repository checks. Nub keeps
+ownership of its built-in package manager, runner, and build approval commands.
+Run `nub screen check zod && nub add zod` to review a package before Nub installs
+it. `nub screen add`, `install`, `update`, `run`, and `approve-builds` stop with the
+matching Nub command instead of falling through to npm, pnpm, Yarn, or Bun.
+
 ## Review and CI gates (read-only, install nothing)
 
 - **`check [pkg... | file.json | pm cmd]`**: audit packages before you install.
@@ -105,6 +124,7 @@ Explicit pass-through also works: `screen npm install`, `screen pnpm add zod`,
 | `--allow-recent <pat>` | exempt a name pattern from the release-age gate (repeatable) |
 | `--deep` | extend blocking gates to the whole resolved (transitive) tree |
 | `--fail-on-advisory` | block when a version is OSV-flagged malware |
+| `--fail-on-degraded` | block when a registry or OSV gate could not run |
 | `--allow-deprecated` | allow a maintainer-deprecated version (blocked by default) |
 | `--fail-on-source-writes` | exit non-zero if an install edited your source tree |
 | `--allow-all-builds` / `--allow-build-hosts` | CI/agent build-script + build-host helpers |

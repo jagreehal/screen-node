@@ -76,6 +76,8 @@
         "minReleaseAgeDays": 0,
         "minReleaseAgeExclude": [],
         "failOnAdvisory": false,
+        "failOnDegraded": false,
+        "defaultTrust": true,
         "malwareFeeds": [],
         "failOnDeprecated": true,
         "cache": true,
@@ -129,6 +131,14 @@
           "default": false,
           "type": "boolean"
         },
+        "failOnDegraded": {
+          "default": false,
+          "type": "boolean"
+        },
+        "defaultTrust": {
+          "default": true,
+          "type": "boolean"
+        },
         "malwareFeeds": {
           "default": [],
           "type": "array",
@@ -169,6 +179,8 @@
         "minReleaseAgeDays",
         "minReleaseAgeExclude",
         "failOnAdvisory",
+        "failOnDegraded",
+        "defaultTrust",
         "malwareFeeds",
         "failOnDeprecated",
         "cache",

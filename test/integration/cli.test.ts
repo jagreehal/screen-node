@@ -581,6 +581,8 @@ describe('cli (golden, no docker)', () => {
       minReleaseAgeDays: 7,
       minReleaseAgeExclude: [],
       failOnAdvisory: true,
+      failOnDegraded: true,
+      defaultTrust: false,
       malwareFeeds: [],
       failOnDeprecated: true,
       cache: true,

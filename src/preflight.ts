@@ -56,6 +56,14 @@ export interface PreflightResult {
   checkedCount: number;
   /** Number of resolved packages the deep gate examined, when `deep` ran. */
   deepCount?: number;
+  /**
+   * Gates that could NOT run this pass (registry/OSV outage, timeout). Every lookup here fails open so
+   * a network blip can't wedge installs, but failing open silently means the one no-opt-out gate (OSV
+   * malware) can be disabled by anything that can break the connection to api.osv.dev. Recording which
+   * gate was skipped lets `--fail-on-degraded` turn "the check didn't run" into a block, so a hostile
+   * network can't quietly downgrade the install to unscreened.
+   */
+  degraded: string[];
 }
 
 export interface PreflightContext {
@@ -102,7 +110,7 @@ async function networkSignals(resolved: ResolvedTarget[], ctx: PreflightContext)
  * surface, and the CLI shell decides what to print and what blocks.
  */
 export async function runPreflight(targets: RiskTarget[], policy: PreflightPolicy, ctx: PreflightContext): Promise<PreflightResult> {
-  const result: PreflightResult = { hints: [], ageViolations: [], advisoryHits: [], knownBadHits: [], checkedCount: 0 };
+  const result: PreflightResult = { hints: [], ageViolations: [], advisoryHits: [], knownBadHits: [], checkedCount: 0, degraded: [] };
   const knownBad = ctx.knownBad ?? [];
   const wantKnownBad = knownBad.length > 0;
   if (nothingToDo(policy) && !wantKnownBad) return result;
@@ -156,7 +164,9 @@ export async function runPreflight(targets: RiskTarget[], policy: PreflightPolic
       // Known-bad over the direct targets when deep won't cover the tree.
       if (wantKnownBad && !useDeep) result.knownBadHits = matchKnownBad(resolved, knownBad);
     } catch {
-      // fail open — a resolution error leaves the (empty) findings and the caller proceeds.
+      // fail open — a resolution error leaves the (empty) findings and the caller proceeds. Named so
+      // `--fail-on-degraded` can block instead: this drops the age, advisory AND known-bad gates at once.
+      result.degraded.push('registry resolve');
     }
   }
 
@@ -176,6 +186,7 @@ export async function runPreflight(targets: RiskTarget[], policy: PreflightPolic
         if (policy.riskHints) result.hints = [...result.hints, ...scan.deprecated];
       } catch {
         // fail open
+        result.degraded.push('deep release-age scan');
       }
     }
     // Malware/advisory across the tree (separate OSV lookups, bounded concurrency).
@@ -184,6 +195,7 @@ export async function runPreflight(targets: RiskTarget[], policy: PreflightPolic
         result.advisoryHits = await advisoriesForPackages(deepPackages!, ctx.advisoryClient ?? createAdvisoryClient());
       } catch {
         // fail open
+        result.degraded.push('deep advisory lookup');
       }
     }
     // Known-bad over the whole tree (offline, no lookups) — a superset of the direct match.

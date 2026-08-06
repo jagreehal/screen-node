@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { Resolver } from 'node:dns/promises';
 import type { LogLevel } from './log.js';
-import { lockfileName, type PackageManager } from './package-manager.js';
+import { projectLockfileName, type PackageManager } from './package-manager.js';
 import type { ProjectFacts } from './project.js';
 
 const INSTALL_SCRIPTS = ['preinstall', 'install', 'postinstall', 'prepublish', 'prepare'] as const;
@@ -1049,7 +1049,7 @@ function parseYarnLockfile(text: string): Map<string, string> {
 }
 
 export function readDirectVersionsFromLockfile(cwd: string, pm: PackageManager): Map<string, string> {
-  const file = path.join(cwd, lockfileName(pm));
+  const file = path.join(cwd, projectLockfileName(cwd, pm));
   if (!existsSync(file)) return new Map();
   const text = readFileSync(file, 'utf8');
   switch (pm) {
@@ -1137,7 +1137,7 @@ function yarnSelectorName(selector: string): string {
  * selectors; bun has no parser yet, so callers fall back to the direct-deps gate with a warning.
  */
 export function readAllPackagesFromLockfile(cwd: string, pm: PackageManager): LockfilePackage[] {
-  const file = path.join(cwd, lockfileName(pm));
+  const file = path.join(cwd, projectLockfileName(cwd, pm));
   if (!existsSync(file)) return [];
   return parseLockfilePackages(readFileSync(file, 'utf8'), pm);
 }
